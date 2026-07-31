@@ -1,0 +1,9 @@
+node_modules/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# NOTE: dist/ is deliberately COMMITTED.
+# `pi install git:...` clones the repo and runs `npm install`, but it does not
+# run our build script, so the bundled broker must already be in the tree or
+# every git install would spawn brokers that don't exist.

@@ -1,0 +1,57 @@
+{
+  "name": "pi-agentview",
+  "version": "0.2.0",
+  "description": "Agent View for the pi coding agent — a fleet dashboard for background sessions (Claude Code-style). Cross-platform (Windows/Linux/macOS).",
+  "type": "module",
+  "license": "MIT",
+  "author": "Joshua Chang",
+  "main": "src/index.ts",
+  "homepage": "https://github.com/chang47/pi-agentview#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chang47/pi-agentview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chang47/pi-agentview/issues"
+  },
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "coding-agent",
+    "agent-view",
+    "background-sessions",
+    "tui"
+  ],
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "SPEC.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:broker": "esbuild src/broker.ts --bundle --platform=node --format=esm --outfile=dist/broker.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-extension.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-broker.ts",
+    "prepublishOnly": "npm run typecheck && npm run build:broker"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-tui": ">=0.74.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.6.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.80.0",
+    "@earendil-works/pi-tui": ">=0.74.0"
+  }
+}
