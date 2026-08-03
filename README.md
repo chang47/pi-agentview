@@ -132,7 +132,9 @@ pi -e ./src/index.ts
 - **Dialogs can't be answered from the dashboard.** A row can show `awaiting_input`, but replying sends a follow-up rather than picking a `select`/`confirm` option.
 - **Broker state isn't rebuilt from the JSONL.** After a broker restart a row shows `idle` with no last reply, even though the JSONL has it.
 - **It replaces the input editor**, so it will clobber another extension that installs its own (e.g. a vim-mode editor).
-- **POSIX is under-tested.** Development and validation happened on Windows.
+- **macOS is untested.** Windows and Linux (WSL2 / Ubuntu, Node 22) are both validated — `smoke.ts`
+  12/12 and `smoke-extension.ts` 25/25 on Linux, including real brokers over unix sockets. macOS
+  shares those POSIX seams but nobody has run it.
 
 Design rationale, the full bug/decision log, and answers to the cross-check questions live in [`SPEC.md`](./SPEC.md) and [`REVIEW.md`](./REVIEW.md).
 

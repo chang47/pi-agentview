@@ -233,12 +233,31 @@ remove/rename only), so I left it rather than expand the blast radius of this pa
 - Worker startup: 28,522 ms → 1,546 ms, measured before and after.
 - Legacy claims file removed; the 3 phantom rows are gone.
 
-**Not verified**
+**POSIX — verified 2026-07-31 on WSL2 / Ubuntu, Node 22, against a fresh clone of the published repo.**
+Fixes #16/#17 confirmed, and the exercise found **two more real bugs** that Windows had been masking:
+
+| # | Bug | Detail | Fix |
+|---|---|---|---|
+| 29 | **`killTree` silently no-opped on non-detached children** | Signalling a negative pid targets the process GROUP, which only works if the target is a group leader (`detached: true`). Brokers are — **the pi RPC worker is not**, because its stdio stays wired to the broker. So on Linux/macOS `killTree` reached brokers but did nothing to a stuck worker, meaning **fix #4 (the orphan-worker leak) would still have leaked on POSIX**. `taskkill /T` hid it on Windows entirely. | Signal the group *and* the pid, tolerating either failing; poll for exit instead of always burning the grace period. |
+| 30 | **`smoke.ts` bypassed the socket-dir setup** | It drove `net.listen()` directly rather than through `IpcServer`, so the POSIX suite died before its first assertion. | `ensureSocketDir()` moved into `platform/paths.ts` and shared by both. |
+
+Also learned, and now written into the code: **Node reports a missing parent chain for a unix socket
+as `EACCES`, not `ENOENT`** — it reads like a permissions problem and sends you the wrong way. On a
+clean machine `~/.local/state` may not exist at all, so the mkdir is genuinely load-bearing.
+
+Result on Linux: **`smoke.ts` 12/12** and **`smoke-extension.ts` 25/25** (the latter spawns real
+brokers, so brokers demonstrably start and accept IPC over a unix socket). `smoke-broker.ts` is
+**21/25** — the 4 failures are all the live-model round-trip in section [3], and that WSL install has
+no model configured (`auth.json` is empty; `get_state` reports `provider: "unknown"`). Everything
+that does not need a model passes, including the full IPC auth/snapshot/lease block.
+
+**Still not verified**
 - **Interactive TUI behaviour** — I can't drive the pi TUI from here. The view/editor changes are
   reasoned and typechecked, not exercised. Please eyeball: `/agents` rows and titles, `Space` peek
   reply (success + failure paths), `r` rename, `Enter` resume.
-- **POSIX.** Fixes #16/#17 are read from code, not run — there's no Linux/macOS box here. They are
-  the difference between "broker starts" and "broker cannot start", so they're worth a real test.
+- **The live-model path on POSIX** — blocked only on credentials in WSL, not on code.
+- **macOS** — untested; it shares the POSIX seams now exercised on Linux, but `taskkill` vs signals
+  and `~/Library/Application Support` are the obvious places to look first.
 - **The resume race under load** — the confirmed-release path is correct by construction, but I did
   not stress it.
 
