@@ -49,6 +49,25 @@ export function socketsDir(): string {
   return join(stateDir(), "sockets");
 }
 
+/**
+ * Prepare the filesystem so `net.listen(socketAddress(id))` can succeed.
+ *
+ * POSIX only: a unix socket is a real filesystem entry, so its parent chain has
+ * to exist and any file left by a crashed broker has to be removed first.
+ * Windows named pipes are kernel objects — nothing to do.
+ *
+ * CALL THIS BEFORE EVERY listen(). Verified on Linux (WSL2, Ubuntu): when the
+ * parent chain is missing, Node reports **EACCES**, not ENOENT — a misleading
+ * error that reads like a permissions problem and sends you the wrong way.
+ */
+export async function ensureSocketDir(address: string): Promise<void> {
+  if (isWin()) return;
+  const { mkdir, unlink } = await import("node:fs/promises");
+  const { dirname } = await import("node:path");
+  await mkdir(dirname(address), { recursive: true });
+  await unlink(address).catch(() => {}); // stale socket -> EADDRINUSE
+}
+
 export function sessionsDir(): string {
   return join(stateDir(), "sessions");
 }

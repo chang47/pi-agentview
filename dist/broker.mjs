@@ -21,6 +21,14 @@ function stateDir() {
 function socketsDir() {
   return join2(stateDir(), "sockets");
 }
+async function ensureSocketDir(address) {
+  if (isWin2()) return;
+  const { mkdir: mkdir3, unlink: unlink3 } = await import("node:fs/promises");
+  const { dirname: dirname4 } = await import("node:path");
+  await mkdir3(dirname4(address), { recursive: true });
+  await unlink3(address).catch(() => {
+  });
+}
 function sessionsDir() {
   return join2(stateDir(), "sessions");
 }
@@ -310,6 +318,7 @@ var Journal = class {
 };
 
 // src/broker/ipc.ts
+init_paths();
 import { createServer } from "node:net";
 var IpcServer = class {
   constructor(address, nonce, handlers, snap) {
@@ -322,13 +331,7 @@ var IpcServer = class {
   conns = /* @__PURE__ */ new Map();
   leaseHolder;
   async start() {
-    if (process.platform !== "win32") {
-      const { mkdir: mkdir3, unlink: unlink3 } = await import("node:fs/promises");
-      const { dirname: dirname4 } = await import("node:path");
-      await mkdir3(dirname4(this.address), { recursive: true });
-      await unlink3(this.address).catch(() => {
-      });
-    }
+    await ensureSocketDir(this.address);
     this.server = createServer((socket) => this.onConnection(socket));
     await new Promise((resolve2, reject) => {
       const onError = (e) => reject(e);

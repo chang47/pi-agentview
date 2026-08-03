@@ -18,6 +18,7 @@
 // one mutation lease holder at a time.
 
 import { createServer, type Server, type Socket } from "node:net";
+import { ensureSocketDir } from "../platform/paths.js";
 import type { BrokerState, JournalEvent } from "../types.js";
 import type { RpcMessage } from "./rpc-client.js";
 
@@ -54,18 +55,9 @@ export class IpcServer {
   ) {}
 
   async start(): Promise<void> {
-    // POSIX only: a unix socket is a real filesystem entry, so (a) its parent
-    // directory must exist — it never did, which meant listen() failed with
-    // ENOENT and the broker could not start at all on Linux/macOS — and (b) a
-    // file left behind by a crashed broker makes listen() fail EADDRINUSE.
-    // Windows named pipes need neither: they are kernel objects that vanish
-    // with the owning process.
-    if (process.platform !== "win32") {
-      const { mkdir, unlink } = await import("node:fs/promises");
-      const { dirname } = await import("node:path");
-      await mkdir(dirname(this.address), { recursive: true });
-      await unlink(this.address).catch(() => {});
-    }
+    // Without this the broker could not start at all on Linux/macOS. See
+    // ensureSocketDir() — the failure surfaces as EACCES, not ENOENT.
+    await ensureSocketDir(this.address);
     this.server = createServer((socket) => this.onConnection(socket));
     await new Promise<void>((resolve, reject) => {
       const onError = (e: Error) => reject(e);

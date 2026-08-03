@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 
-import { stateDir, socketAddress } from "./src/platform/paths.js";
+import { stateDir, socketAddress, ensureSocketDir } from "./src/platform/paths.js";
 import { atomicWrite } from "./src/platform/atomic.js";
 import { isAlive, newNonce } from "./src/platform/pid.js";
 import { killTree } from "./src/platform/kill.js";
@@ -47,8 +47,13 @@ ok(
 
 // --- IPC transport (CRITICAL windows validation: named pipe round-trip) -----
 console.log("\n[ipc transport]");
+const smokeAddr = socketAddress("smoke-ipc");
+// On POSIX the socket's parent chain must exist first, or listen() fails with a
+// misleading EACCES. The broker does this via IpcServer; this test drives the
+// raw transport, so it has to do it too.
+await ensureSocketDir(smokeAddr);
 await new Promise<void>((resolve) => {
-  const addr = socketAddress("smoke-ipc");
+  const addr = smokeAddr;
   const server = createServer((conn) => {
     conn.write("hello-from-broker");
     conn.end();
