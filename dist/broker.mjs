@@ -100,6 +100,14 @@ function isAlive(pid) {
     return e.code === "EPERM";
   }
 }
+async function waitForExit(pid, timeoutMs, pollMs = 100) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!isAlive(pid)) return true;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  return !isAlive(pid);
+}
 
 // src/platform/kill.ts
 var isWin = platform() === "win32";
@@ -120,10 +128,15 @@ async function killTree(pid, graceMs = 3e3) {
       process.kill(-pid, s);
     } catch {
     }
+    try {
+      process.kill(pid, s);
+    } catch {
+    }
   };
   sig("SIGTERM");
-  await new Promise((r) => setTimeout(r, graceMs));
-  if (isAlive(pid)) sig("SIGKILL");
+  if (await waitForExit(pid, graceMs)) return;
+  sig("SIGKILL");
+  await waitForExit(pid, 1e3);
 }
 
 // src/platform/constants.ts

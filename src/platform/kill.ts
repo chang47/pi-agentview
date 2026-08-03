@@ -1,10 +1,16 @@
-// Process-tree termination. POSIX uses negative-PID process-group signals
-// (brokers/workers are spawned detached, so pgid == pid). Windows has no process
-// groups reachable via signals, so we use `taskkill /T` (tree) `/F` (force).
+// Process-tree termination.
+//
+// POSIX: signalling a NEGATIVE pid targets the process GROUP, which reaches
+// descendants — but only when the target is a group leader, i.e. it was spawned
+// with `detached: true`. Our brokers are; the pi RPC worker is NOT (it needs its
+// stdio pipes wired to the broker). Signalling only the group therefore killed
+// brokers but silently no-opped on workers, so a stuck worker leaked on Linux
+// while `taskkill /T` masked the bug on Windows. Caught by the smoke suite on
+// WSL2/Ubuntu. Signal BOTH: the group for descendants, the pid for itself.
 
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
-import { isAlive } from "./pid.js";
+import { isAlive, waitForExit } from "./pid.js";
 
 const isWin = platform() === "win32";
 
@@ -22,17 +28,26 @@ export async function killTree(pid: number, graceMs = 3000): Promise<void> {
     return;
   }
 
-  // POSIX: kill the whole group (negative pid), wait, then SIGKILL if still alive.
+  // Group first (descendants), then the process itself. Either may legitimately
+  // fail — no group when the child isn't detached, ESRCH once it's already gone.
   const sig = (s: NodeJS.Signals) => {
     try {
       process.kill(-pid, s);
     } catch {
-      /* group may already be gone */
+      /* not a group leader, or group already gone */
+    }
+    try {
+      process.kill(pid, s);
+    } catch {
+      /* already dead */
     }
   };
+
   sig("SIGTERM");
-  await new Promise((r) => setTimeout(r, graceMs));
-  if (isAlive(pid)) sig("SIGKILL");
+  // Poll rather than always burning the full grace period.
+  if (await waitForExit(pid, graceMs)) return;
+  sig("SIGKILL");
+  await waitForExit(pid, 1000);
 }
 
 /** Best-effort graceful stop: ask politely, then force. (Broker sends an RPC
@@ -45,3 +60,6 @@ export async function stopTree(pid: number, graceMs = 3000): Promise<void> {
   }
   return killTree(pid, graceMs);
 }
+
+/** Exported for tests: is this process gone? */
+export { isAlive };
