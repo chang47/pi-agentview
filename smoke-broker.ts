@@ -92,6 +92,46 @@ console.log("\n[2b] deriveState transitions");
   ok("pendingDialog captured", st.pendingDialog?.id === "d1" && st.pendingDialog?.method === "confirm");
 }
 
+console.log("\n[2b-2] failed command response surfaces (regression: silent stuck-at-idle)");
+{
+  // A rejected prompt emits NO agent_start, NO agent_settled and NO worker exit.
+  // The failure response is the only notice there will ever be, so the fleet row
+  // must reflect it instead of sitting at "idle / ready" forever.
+  const rejected = {
+    type: "response",
+    command: "prompt",
+    success: false,
+    error: "No API key found for zai.\n\nUse /login to log into a provider via OAuth or API key.",
+  };
+
+  let st = initialState("resp-syn");
+  const next = deriveState(st, rejected, 1);
+  ok("failed response is not ignored", next !== null, `next=${next}`);
+  st = next ?? st;
+  ok("failed prompt -> needs_attention", st.state === "needs_attention", `state=${st.state}`);
+  ok("activity names the command", st.activity.startsWith("prompt failed:"), `activity=${st.activity}`);
+  ok("activity carries the provider error", st.activity.includes("No API key found for zai"));
+  ok("activity is collapsed to one line", !st.activity.includes("\n"));
+
+  // Successful acks stay invisible — they are pure protocol noise.
+  ok(
+    "successful response still ignored",
+    deriveState(initialState("resp-syn"), { type: "response", command: "prompt", success: true }, 2) === null,
+  );
+
+  // An open dialog must survive: the worker is still blocked on its answer, so
+  // dropping pendingDialog here would strand the dialog with no way to reply.
+  let dlg = initialState("resp-dlg");
+  dlg = deriveState(dlg, { type: "extension_ui_request", id: "d9", method: "confirm", title: "Proceed?" }, 3) ?? dlg;
+  const afterFail = deriveState(dlg, { type: "response", command: "set_model", success: false, error: "nope" }, 4) ?? dlg;
+  ok("failure keeps awaiting_input", afterFail.state === "awaiting_input", `state=${afterFail.state}`);
+  ok("failure preserves pendingDialog", afterFail.pendingDialog?.id === "d9");
+
+  // Degraded gracefully when the worker omits an error string.
+  const bare = deriveState(initialState("resp-bare"), { type: "response", command: "prompt", success: false }, 5);
+  ok("missing error string -> 'unknown error'", bare?.activity === "prompt failed: unknown error", `activity=${bare?.activity}`);
+}
+
 console.log("\n[2c] IpcServer auth + snapshot + broadcast + lease");
 {
   const id = "ipc-syn";

@@ -114,8 +114,11 @@ export async function runBroker(rawArgv: string[]): Promise<void> {
   };
 
   rpc.on("message", async (msg: RpcMessage) => {
-    // Don't journal command acks; only events + UI requests.
-    if (msg.type === "response") return;
+    // Don't journal successful command acks; only events, UI requests, and
+    // FAILED responses. A failure is not an ack — for a rejected prompt it is
+    // the only signal the broker ever receives (no agent_start, no settle, no
+    // exit), so dropping it left the session silently stuck at "idle / ready".
+    if (msg.type === "response" && msg.success !== false) return;
     const ev = await journal.append(msg.type, msg);
     ipc.broadcastEvent(ev);
     const next = deriveState(state, msg, ev.seq);

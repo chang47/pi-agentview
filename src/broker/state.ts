@@ -98,6 +98,23 @@ export function deriveState(prev: BrokerState, ev: RpcMessage, seq: number): Bro
       // Useful signal that work is queued; no state change beyond a touch.
       return { ...base };
 
+    case "response": {
+      // A successful ack carries no display signal. A FAILED command does, and
+      // it is the ONLY notice we will ever get: a rejected prompt produces no
+      // agent_start, no agent_settled and no worker exit, so without this the
+      // row sits at "idle / ready" forever. Observed with an unauthenticated
+      // provider ("No API key found for <provider>") — the run never begins and
+      // nothing in the fleet view ever says why.
+      if (ev.success !== false) return null;
+      const cmd = typeof ev.command === "string" ? ev.command : "command";
+      const err = typeof ev.error === "string" && ev.error ? ev.error : "unknown error";
+      const activity = summarize(`${cmd} failed: ${err}`);
+      // Never clobber an open dialog: the worker is still blocked waiting for an
+      // extension_ui_response, and dropping pendingDialog would strand it.
+      if (prev.state === "awaiting_input") return { ...base, activity };
+      return { ...base, state: "needs_attention", activity, pendingDialog: undefined };
+    }
+
     default:
       return null; // events we don't surface (e.g. turn_start, message_update deltas)
   }
