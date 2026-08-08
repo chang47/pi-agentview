@@ -4,8 +4,7 @@
 // Keys: ↑↓/j/k select · Space peek (then type to reply, Enter sends) ·
 //       Enter resume · n new · d remove · Esc close
 
-import { truncateToWidth, type TUI } from "@earendil-works/pi-tui";
-import { type Theme } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { BrokerManager } from "./controller.js";
 import { groupRows, statusGlyph, formatElapsed, type ManagedRow } from "./render.js";
 import type { ManagedId } from "../types.js";
@@ -15,6 +14,25 @@ export type ViewResult =
   | { action: "remove"; id: ManagedId }
   | { action: "create" }
   | null;
+
+/** The slice of the host TUI this component actually uses. Declaring the
+ *  dependency structurally (rather than as the whole `TUI` class) keeps the
+ *  real call site assignable while letting the view be driven without a
+ *  terminal — which is what makes its key handling testable. */
+export interface ViewHost {
+  requestRender(force?: boolean): void;
+}
+
+/** The colour names this view asks for — a subset of the host theme's palette.
+ *  Naming them makes a typo a compile error; the old code cast the theme to an
+ *  inline `{ fg?: ... }` shape, which silently accepted any string. */
+export type ViewColor = "accent" | "muted" | "success" | "warning" | "error";
+
+/** The slice of the host theme this component actually uses. `fg` is optional
+ *  because themes without it are tolerated (the text is rendered uncolored). */
+export interface ViewTheme {
+  fg?: (name: ViewColor, s: string) => string;
+}
 
 const UP = "\x1b[A";
 const DOWN = "\x1b[B";
@@ -33,8 +51,8 @@ export class AgentViewComponent {
   private renameBuf = "";
 
   constructor(
-    private tui: TUI,
-    private theme: Theme,
+    private tui: ViewHost,
+    private theme: ViewTheme,
     private mgr: BrokerManager,
     private done: (result: ViewResult) => void,
     private onRenameForeground?: (title: string) => void,
@@ -63,9 +81,9 @@ export class AgentViewComponent {
     return groupRows(this.cachedRows).flatMap((g) => g.rows);
   }
 
-  private color(name: string, s: string): string {
+  private color(name: ViewColor, s: string): string {
     try {
-      const fn = (this.theme as { fg?: (n: string, s: string) => string }).fg?.(name, s);
+      const fn = this.theme.fg?.(name, s);
       return typeof fn === "string" ? fn : s;
     } catch {
       return s;
@@ -147,7 +165,7 @@ export class AgentViewComponent {
     return lines;
   }
 
-  private stateColor(row: ManagedRow): string {
+  private stateColor(row: ManagedRow): ViewColor {
     switch (row.state) {
       case "working":
         return "accent";

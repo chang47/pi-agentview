@@ -6,10 +6,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { BrokerManager, resolveTitle } from "./src/extension/controller.js";
-import { rowsFor, groupRows, formatElapsed, statusGlyph, stateLabel } from "./src/extension/render.js";
+import { rowsFor, groupRows, formatElapsed, statusGlyph, stateLabel, type ManagedRow } from "./src/extension/render.js";
+import { AgentViewComponent, type ViewHost } from "./src/extension/view.js";
 import { BrokerSpecStore } from "./src/registry.js";
 import { brokerSpecPath, sessionDir, sessionsDir } from "./src/platform/paths.js";
-import type { BrokerState, RegistryEntry } from "./src/types.js";
+import type { BrokerState, ManagedId, RegistryEntry } from "./src/types.js";
 
 let pass = 0;
 let fail = 0;
@@ -191,6 +192,120 @@ console.log("\n[cleanup safety]");
 
   await rm(sessionDir(id), { recursive: true, force: true });
   await rm(tmp, { recursive: true, force: true });
+}
+
+// --- peek/reply delivery reporting -----------------------------------------
+// Regression cover for the bug documented in view.ts: the peek panel used to
+// flash "sent ✓" unconditionally, including for foreground rows and rows whose
+// broker is gone — so a reply that went nowhere looked delivered. The two
+// failure cases below run against the REAL BrokerManager.sendReply (only rows()
+// is stubbed), so a regression in its refusal logic fails here too.
+console.log("\n[peek reply delivery]");
+{
+  class StubHost implements ViewHost {
+    renders = 0;
+    requestRender(): void {
+      this.renders++;
+    }
+  }
+  /** Real manager, fixed row set — no brokers, so sendReply() genuinely fails. */
+  class RowsOnlyManager extends BrokerManager {
+    constructor(private readonly fake: ManagedRow[]) {
+      super();
+    }
+    override rows(): ManagedRow[] {
+      return this.fake;
+    }
+  }
+  /** The contrast case: delivery actually succeeds. */
+  class DeliveringManager extends RowsOnlyManager {
+    readonly sent: Array<{ id: ManagedId; text: string }> = [];
+    override sendReply(id: ManagedId, text: string): boolean {
+      this.sent.push({ id, text });
+      return true;
+    }
+  }
+
+  const mkRow = (id: ManagedId, over: Partial<ManagedRow> = {}): ManagedRow => ({
+    id,
+    title: "a task",
+    state: "completed",
+    activity: "done",
+    reply: "prior answer",
+    elapsedMs: 0,
+    needsInput: false,
+    jsonlPath: `/tmp/${id}.jsonl`,
+    ...over,
+  });
+  const typeIn = (v: AgentViewComponent, s: string) => {
+    for (const ch of s) v.handleInput(ch);
+  };
+  const has = (lines: string[], needle: string) => lines.some((l) => l.includes(needle));
+
+  // 1. Background row whose broker is unreachable -> must NOT claim success.
+  {
+    const mgr = new RowsOnlyManager([mkRow("s-dead")]);
+    let closed = false;
+    const v = new AgentViewComponent(new StubHost(), {}, mgr, () => {
+      closed = true;
+    });
+    v.handleInput(" "); // open peek
+    typeIn(v, "ping");
+    v.handleInput("\r"); // send
+    const lines = v.render(80);
+    ok("unreachable broker: no 'sent ✓'", !has(lines, "sent ✓"), lines.join(" | "));
+    ok("unreachable broker: delivery error shown", has(lines, "✗ no live broker"), lines.join(" | "));
+    ok("unreachable broker: typed reply is preserved", has(lines, "reply ▸ ping"), lines.join(" | "));
+    ok("failed send keeps the view open", !closed);
+
+    // Any further keystroke clears the error banner.
+    v.handleInput("x");
+    ok("next keystroke dismisses the error", !has(v.render(80), "✗ no live broker"));
+    v.handleInput("\x1b"); // close peek
+    v.handleInput("\x1b"); // close view (clears the refresh timer)
+  }
+
+  // 2. Foreground/attached row -> refused, with the attach-specific reason.
+  {
+    const mgr = new RowsOnlyManager([mkRow("fg:term-1", { state: "attached", attached: true })]);
+    const v = new AgentViewComponent(new StubHost(), {}, mgr, () => {});
+    v.handleInput(" ");
+    typeIn(v, "hello");
+    v.handleInput("\r");
+    const lines = v.render(80);
+    ok("attached row: no 'sent ✓'", !has(lines, "sent ✓"), lines.join(" | "));
+    ok("attached row: attach-specific error", has(lines, "✗ can't reply to a session attached"), lines.join(" | "));
+    v.handleInput("\x1b");
+    v.handleInput("\x1b");
+  }
+
+  // 3. Delivery succeeds -> "sent ✓", buffer cleared, text handed to the manager.
+  {
+    const mgr = new DeliveringManager([mkRow("s-live")]);
+    const v = new AgentViewComponent(new StubHost(), {}, mgr, () => {});
+    v.handleInput(" ");
+    typeIn(v, "go on");
+    v.handleInput("\r");
+    const lines = v.render(80);
+    ok("delivered: shows 'sent ✓'", has(lines, "sent ✓"), lines.join(" | "));
+    ok("delivered: no error banner", !has(lines, "✗ "), lines.join(" | "));
+    ok("delivered: manager received the exact text", mgr.sent.length === 1 && mgr.sent[0]?.text === "go on", JSON.stringify(mgr.sent));
+    ok("delivered: reply buffer cleared", !has(lines, "reply ▸ go on"));
+    v.handleInput("\x1b");
+    v.handleInput("\x1b");
+  }
+
+  // 4. Switching rows inside peek must not carry A's draft over to B.
+  {
+    const mgr = new DeliveringManager([mkRow("s-one"), mkRow("s-two")]);
+    const v = new AgentViewComponent(new StubHost(), {}, mgr, () => {});
+    v.handleInput(" ");
+    typeIn(v, "draft for one");
+    v.handleInput("\x1b[B"); // move selection down, still in peek
+    v.handleInput("\r"); // Enter on an empty buffer closes peek, sends nothing
+    ok("row switch drops the previous draft", mgr.sent.length === 0, JSON.stringify(mgr.sent));
+    v.handleInput("\x1b");
+  }
 }
 
 console.log(`\n${fail === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${fail} failed`);
