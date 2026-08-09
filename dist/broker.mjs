@@ -572,6 +572,13 @@ function deriveState(prev, ev, seq) {
     }
     case "queue_update":
       return { ...base };
+    case "response": {
+      if (ev.success !== false) return null;
+      const command = typeof ev.command === "string" ? ev.command : "command";
+      const activity = `${command} failed: ${typeof ev.error === "string" ? summarize(ev.error) : "rejected"}`;
+      if (base.state === "awaiting_input" && base.pendingDialog) return { ...base, activity };
+      return { ...base, state: "needs_attention", activity };
+    }
     default:
       return null;
   }
@@ -757,7 +764,7 @@ async function runBroker(rawArgv) {
     ipc.broadcastState(state);
   };
   rpc.on("message", async (msg) => {
-    if (msg.type === "response") return;
+    if (msg.type === "response" && msg.success !== false) return;
     const ev = await journal.append(msg.type, msg);
     ipc.broadcastEvent(ev);
     const next = deriveState(state, msg, ev.seq);

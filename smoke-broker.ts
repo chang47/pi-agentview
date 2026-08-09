@@ -92,7 +92,32 @@ console.log("\n[2b] deriveState transitions");
   ok("pendingDialog captured", st.pendingDialog?.id === "d1" && st.pendingDialog?.method === "confirm");
 }
 
-console.log("\n[2c] IpcServer auth + snapshot + broadcast + lease");
+console.log("\n[2c] rejected fire-and-forget command surfaces");
+{
+  // A prompt sent via write() carries no id, so its rejection arrives as an
+  // uncorrelated `response`. This used to be dropped, leaving a session that
+  // never ran looking like a healthy "idle / ready" row.
+  const base = initialState("resp");
+  ok("successful ack changes nothing", deriveState(base, { type: "response", command: "prompt", success: true }, 1) === null);
+  const failed = deriveState(base, {
+    type: "response",
+    command: "prompt",
+    success: false,
+    error: "No API key found for zai.\n\nUse /login to log into a provider via OAuth or API key.",
+  }, 2);
+  ok("refused prompt -> needs_attention", failed?.state === "needs_attention", `state=${failed?.state}`);
+  ok("refusal reason is shown", !!failed?.activity.startsWith("prompt failed: No API key found for zai."), `activity=${failed?.activity}`);
+
+  // An open dialog must keep its answer affordance (the view gates that on
+  // awaiting_input), so a failure there only annotates the activity line.
+  let dst = initialState("resp-dlg");
+  dst = deriveState(dst, { type: "extension_ui_request", id: "d9", method: "confirm", title: "Allow?" }, 1) ?? dst;
+  const dfail = deriveState(dst, { type: "response", command: "extension_ui_response", success: false, error: "worker gone" }, 2);
+  ok("failure keeps an open dialog answerable", dfail?.state === "awaiting_input" && dfail.pendingDialog?.id === "d9", `state=${dfail?.state}`);
+  ok("dialog failure still reports the reason", !!dfail?.activity.includes("worker gone"), `activity=${dfail?.activity}`);
+}
+
+console.log("\n[2d] IpcServer auth + snapshot + broadcast + lease");
 {
   const id = "ipc-syn";
   const addr = socketAddress(id);

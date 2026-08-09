@@ -98,6 +98,21 @@ export function deriveState(prev: BrokerState, ev: RpcMessage, seq: number): Bro
       // Useful signal that work is queued; no state change beyond a touch.
       return { ...base };
 
+    case "response": {
+      // Fire-and-forget commands (prompt, abort, extension_ui_response) go out
+      // via write(), which attaches no id — so their rejection is uncorrelated
+      // and this is the ONLY channel that ever reports it. Dropping it left a
+      // refused prompt (bad key, unknown model, provider outage) displaying as
+      // a healthy "idle / ready" row that simply never did anything.
+      if (ev.success !== false) return null; // plain ack; nothing to surface
+      const command = typeof ev.command === "string" ? ev.command : "command";
+      const activity = `${command} failed: ${typeof ev.error === "string" ? summarize(ev.error) : "rejected"}`;
+      // A dialog still open needs its answer affordance (the view gates that on
+      // awaiting_input); report the failure in the activity line instead.
+      if (base.state === "awaiting_input" && base.pendingDialog) return { ...base, activity };
+      return { ...base, state: "needs_attention", activity };
+    }
+
     default:
       return null; // events we don't surface (e.g. turn_start, message_update deltas)
   }

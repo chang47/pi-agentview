@@ -114,8 +114,10 @@ export async function runBroker(rawArgv: string[]): Promise<void> {
   };
 
   rpc.on("message", async (msg: RpcMessage) => {
-    // Don't journal command acks; only events + UI requests.
-    if (msg.type === "response") return;
+    // Don't journal successful command acks; only events, UI requests, and
+    // command FAILURES — a fire-and-forget command has no other way to report
+    // that it was refused (see deriveState's "response" case).
+    if (msg.type === "response" && msg.success !== false) return;
     const ev = await journal.append(msg.type, msg);
     ipc.broadcastEvent(ev);
     const next = deriveState(state, msg, ev.seq);
