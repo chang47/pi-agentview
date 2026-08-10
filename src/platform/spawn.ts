@@ -12,6 +12,7 @@ import { spawn, type ChildProcess, type StdioOptions } from "node:child_process"
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { STATE_DIR_ENV } from "./constants.js";
 
 const ENV_CLI = "PI_AGENTVIEW_PI_CLI";
 
@@ -19,6 +20,14 @@ let cliCache: string | undefined;
 
 /** Absolute path to the pi CLI entry (e.g. .../dist/cli.js). */
 export function resolvePiCliPath(): string {
+  // TESTABILITY SEAM: honor an explicit PI_AGENTVIEW_PI_CLI override first, so a
+  // fake pi propagates through the whole chain — the extension resolves it here,
+  // spawnBroker() injects it into the broker env, and the broker's
+  // resolvePiCommand() reads it for the worker. Production leaves this unset in
+  // the extension; only the broker child has it set (to the real pi, injected by
+  // spawnBroker below), so real use is unchanged.
+  const override = process.env[ENV_CLI];
+  if (override) return override;
   if (cliCache) return cliCache;
   // "." resolves via the ESM import condition; derive the package root from it,
   // then read package.json by path (its `exports` hides subpaths from resolvers).
@@ -50,7 +59,11 @@ export interface SpawnBrokerOptions {
 /** Spawn the broker detached so it survives the foreground pi/terminal closing.
  *  Injects the resolved pi CLI path so the broker never needs shell:true. */
 export function spawnBroker(opts: SpawnBrokerOptions): ChildProcess {
-  const env = { ...opts.env, [ENV_CLI]: resolvePiCliPath() };
+  const env: NodeJS.ProcessEnv = { ...opts.env, [ENV_CLI]: resolvePiCliPath() };
+  // Carry the state-dir isolation override to the broker so the fleet manager and
+  // the brokers it spawns share one state dir under test. Unset in production.
+  const stateDirOverride = process.env[STATE_DIR_ENV];
+  if (stateDirOverride) env[STATE_DIR_ENV] = stateDirOverride;
   const child = spawn(process.execPath, [opts.brokerPath, ...(opts.args ?? [])], {
     detached: true,
     stdio: opts.stdio ?? "ignore",

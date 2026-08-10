@@ -1,0 +1,4 @@
+# Visual golden SVGs are byte-compared by the visual tests, and the generator
+# emits LF. Pin them to LF so a Windows checkout (autocrlf) can't rewrite them to
+# CRLF and desync the comparison. (The tests are also CRLF-tolerant as a backstop.)
+test/visual/__golden__/*.svg text eol=lf

@@ -8,6 +8,12 @@ export const BROKER_CHILD_ENV = "PI_AGENTVIEW_BROKER_CHILD";
 /** Env var carrying the resolved pi CLI path from extension -> broker. */
 export const PI_CLI_ENV = "PI_AGENTVIEW_PI_CLI";
 
+/** Env override for the state-dir root. TEST-ISOLATION SEAM: unset in production
+ *  (the per-OS default applies); when set, every process — extension, broker,
+ *  worker — shares one throwaway state dir, so concurrent/test runs can't collide
+ *  with the machine-wide default or leak sessions/<id> into it. */
+export const STATE_DIR_ENV = "PI_AGENTVIEW_STATE_DIR";
+
 /** How often an interactive host re-stamps its ownership claim. */
 export const CLAIM_HEARTBEAT_MS = 10_000;
 

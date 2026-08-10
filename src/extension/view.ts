@@ -4,10 +4,11 @@
 // Keys: ↑↓/j/k select · Space peek (then type to reply, Enter sends) ·
 //       Enter resume · n new · d remove · Esc close
 
-import { truncateToWidth, type TUI } from "@earendil-works/pi-tui";
+import { type TUI } from "@earendil-works/pi-tui";
 import { type Theme } from "@earendil-works/pi-coding-agent";
 import type { BrokerManager } from "./controller.js";
-import { groupRows, statusGlyph, formatElapsed, type ManagedRow } from "./render.js";
+import { groupRows, type ManagedRow } from "./render.js";
+import { renderFrame } from "./frame.js";
 import type { ManagedId } from "../types.js";
 
 export type ViewResult =
@@ -72,97 +73,22 @@ export class AgentViewComponent {
     }
   }
 
-  private rule(width: number): string {
-    return this.color("muted", "─".repeat(Math.max(0, width)));
-  }
-
-  private preview(row: ManagedRow): string {
-    if (row.attached) return "active in another terminal";
-    if ((row.state === "completed" || row.state === "awaiting_input") && row.reply) {
-      return row.reply.replace(/\s+/g, " ").trim();
-    }
-    return row.activity;
-  }
-
   render(width: number): string[] {
     this.refresh();
-    const lines: string[] = [];
-    const groups = groupRows(this.cachedRows);
-
-    const counts: Record<string, number> = {};
-    for (const r of this.cachedRows) counts[r.state] = (counts[r.state] ?? 0) + 1;
-    const summary = Object.entries(counts)
-      .map(([s, n]) => `${s}=${n}`)
-      .join("  ");
-
-    lines.push(this.color("accent", "Agent View") + (summary ? this.color("muted", `   ${summary}`) : ""));
-    lines.push(this.rule(width));
-
-    if (groups.length === 0) {
-      lines.push(this.color("muted", "  No background sessions. Press n to create one, Esc to close."));
-    }
-
-    for (const g of groups) {
-      lines.push(this.color("accent", ` ${g.label} (${g.rows.length})`));
-      for (const row of g.rows) {
-        const sel = row.id === this.selectedId;
-        const marker = sel ? this.color("accent", "▸ ") : "  ";
-        const glyph = this.color(this.stateColor(row), statusGlyph(row.state));
-        const elapsed = row.elapsedMs !== undefined ? this.color("muted", ` ${formatElapsed(row.elapsedMs)}`) : "";
-        const title = truncateToWidth(row.title, Math.max(1, width - 8 - (row.elapsedMs !== undefined ? 6 : 0)), "…");
-        const used = 4 + title.length + elapsed.length;
-        const previewTxt = this.color("muted", truncateToWidth(` — ${this.preview(row)}`, Math.max(0, width - used), ""));
-        lines.push(`${marker}${glyph} ${title}${previewTxt}${elapsed}`);
-
-        if (sel && this.peekOpen) {
-          const body = row.state === "awaiting_input" ? row.activity : row.reply ?? row.activity;
-          if (body) {
-            for (const ln of body.split("\n").slice(0, 10)) {
-              lines.push(this.color("muted", "  " + truncateToWidth(ln, Math.max(2, width - 2), "…")));
-            }
-          }
-          // Reply input line.
-          const promptLabel = this.color("accent", "  reply ▸ ");
-          const buf = truncateToWidth(this.replyBuf + "█", Math.max(1, width - 11), "");
-          if (this.justSent) lines.push(this.color("success", "  sent ✓"));
-          else lines.push(promptLabel + buf);
-          if (this.sendError) lines.push(this.color("error", "  ✗ " + truncateToWidth(this.sendError, Math.max(2, width - 4), "…")));
-        }
-      }
-    }
-
-    if (this.renameMode) {
-      lines.push(this.color("accent", "  rename ▸ ") + truncateToWidth(this.renameBuf + "█", Math.max(1, width - 11), ""));
-    }
-    lines.push(this.rule(width));
-    const selAttached = this.cachedRows.some((r) => r.id === this.selectedId && r.attached);
-    const hint = this.renameMode
-      ? " type new title · Enter save · Esc cancel"
-      : this.peekOpen
-        ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
-        : selAttached
-          ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-          : " ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
-    lines.push(this.color("muted", hint));
-    return lines;
-  }
-
-  private stateColor(row: ManagedRow): string {
-    switch (row.state) {
-      case "working":
-        return "accent";
-      case "completed":
-        return "success";
-      case "awaiting_input":
-      case "interrupted":
-        return "warning";
-      case "needs_attention":
-        return "error";
-      case "attached":
-        return "accent";
-      default:
-        return "muted";
-    }
+    return renderFrame(
+      this.cachedRows,
+      width,
+      {
+        selectedId: this.selectedId,
+        peekOpen: this.peekOpen,
+        replyBuf: this.replyBuf,
+        justSent: this.justSent,
+        sendError: this.sendError,
+        renameMode: this.renameMode,
+        renameBuf: this.renameBuf,
+      },
+      (n, s) => this.color(n, s),
+    );
   }
 
   handleInput(data: string): void {
