@@ -1,0 +1,258 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="751" height="268" viewBox="0 0 751 268" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
+<title>Agent View — interaction flow</title>
+<rect width="751" height="268" fill="#0d1117"/>
+<g dominant-baseline="alphabetic">
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.0000;0.1000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.1000;0.2000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.2000;0.3000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#6e7681">  All 42 tests pass now — the retry wrapper was swallowing the timeout.</text>
+<text x="14.0" y="169.6" fill="#56d4dd">  reply ▸ </text>
+<text x="98.0" y="169.6" fill="#c9d1d9">█</text>
+<text x="14.0" y="189.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="209.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="209.6" fill="#6e7681">·</text>
+<text x="39.2" y="209.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="209.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="229.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="249.6" fill="#6e7681"> type a reply · Enter send · ↑↓ switch · Esc close peek</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.3000;0.4000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#6e7681">  All 42 tests pass now — the retry wrapper was swallowing the timeout.</text>
+<text x="14.0" y="169.6" fill="#56d4dd">  reply ▸ </text>
+<text x="98.0" y="169.6" fill="#c9d1d9">ship it█</text>
+<text x="14.0" y="189.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="209.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="209.6" fill="#6e7681">·</text>
+<text x="39.2" y="209.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="209.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="229.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="249.6" fill="#6e7681"> type a reply · Enter send · ↑↓ switch · Esc close peek</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.4000;0.5000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#6e7681">  All 42 tests pass now — the retry wrapper was swallowing the timeout.</text>
+<text x="14.0" y="169.6" fill="#3fb950">  sent ✓</text>
+<text x="14.0" y="189.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="209.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="209.6" fill="#6e7681">·</text>
+<text x="39.2" y="209.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="209.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="229.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="249.6" fill="#6e7681"> type a reply · Enter send · ↑↓ switch · Esc close peek</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.5000;0.6000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.6000;0.7000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.7000;0.8000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#56d4dd">  rename ▸ </text>
+<text x="106.4" y="189.6" fill="#c9d1d9">scratch session█</text>
+<text x="14.0" y="209.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="229.6" fill="#6e7681"> type new title · Enter save · Esc cancel</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.8000;0.9000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#56d4dd">  rename ▸ </text>
+<text x="106.4" y="189.6" fill="#c9d1d9">scratch session (renamed)█</text>
+<text x="14.0" y="209.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="229.6" fill="#6e7681"> type new title · Enter save · Esc cancel</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.9000;1.0000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  completed=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 47s</text>
+<text x="14.0" y="109.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="129.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="129.6" fill="#3fb950">✓</text>
+<text x="39.2" y="129.6" fill="#c9d1d9"> fix the flaky uploader test</text>
+<text x="274.4" y="129.6" fill="#6e7681"> — All 42 tests pass now — the</text>
+<text x="526.4" y="129.6" fill="#6e7681"> 5m2s</text>
+<text x="14.0" y="149.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="169.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="169.6" fill="#6e7681">·</text>
+<text x="39.2" y="169.6" fill="#c9d1d9"> scratch session (renamed)</text>
+<text x="257.6" y="169.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+</g>
+</svg>
