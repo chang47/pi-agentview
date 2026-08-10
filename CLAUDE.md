@@ -21,7 +21,8 @@ Read this before verifying a change. Everything here is offline and deterministi
 | `npm test` | The whole suite offline: `smoke.ts`, `smoke-extension.ts`, `smoke-broker.ts` (all via the fake pi), then the visual stills + driven flow |
 | `npm run test:visual` | Assert the 9 golden **stills** — one per Agent View screen state |
 | `npm run test:drive` | Assert the **driven-flow** animated SVG |
-| `npm run test:visual:update` | Regenerate BOTH golden sets after an INTENTIONAL UI change — review the diff before committing |
+| `npm run test:interactions` | Drive the REAL `AgentViewComponent` by keystroke — assert behavior + a filmstrip golden |
+| `npm run test:visual:update` | Regenerate ALL visual goldens after an INTENTIONAL UI change — review the diff before committing |
 
 **How it's testable — the fake pi.** The dashboard resolves the pi binary through the
 `PI_AGENTVIEW_PI_CLI` env var (`src/platform/spawn.ts`). `test/fakes/fake-pi.mjs` is a scripted
@@ -37,6 +38,16 @@ driven flow (`driven-flow.svg`) are terminal-style SVGs you open in a browser. A
 behavior regression shows up as a golden diff **and** is visible in the picture — this is the
 "resolve it by looking" gate that catches what an assertion misses. Add a fixture to
 `test/visual/fixtures.ts` for a new screen state, then `npm run test:visual:update`.
+
+**Reproducing a reported bug (the interaction harness).** `test/visual/harness.ts` drives the
+REAL `AgentViewComponent` — real `handleInput` + real `render` — against a mock manager (a
+scriptable roster + a call log; `sendReply` can be made to fail). To investigate "the agentview
+did X wrong": add a scenario to `test/visual/interactions.ts` — a roster + a list of keystrokes
+(`{key}` / `{text}` / `{rows}`) — then read back `frames` (what rendered at each step) and
+`calls` (what the component asked the manager to do: `sendReply`/`setTitle`/`remove`/resume). No
+broker, no model — a bug becomes a small deterministic repro you can look at. `runScenario` is
+the reusable entry point; `interactions.ts` shows navigate/peek/reply, the delivery-failure path,
+and the attached-row guard as examples.
 
 **GOTCHA — rebuild the broker bundle after touching bundled code.** `dist/broker.mjs` is a
 COMMITTED esbuild bundle of `src/broker.ts` and everything it imports (`platform/paths.ts`,
