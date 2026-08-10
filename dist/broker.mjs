@@ -3,6 +3,17 @@ var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
 
+// src/platform/constants.ts
+var BROKER_CHILD_ENV, STATE_DIR_ENV, SPEC_WATCH_MS;
+var init_constants = __esm({
+  "src/platform/constants.ts"() {
+    "use strict";
+    BROKER_CHILD_ENV = "PI_AGENTVIEW_BROKER_CHILD";
+    STATE_DIR_ENV = "PI_AGENTVIEW_STATE_DIR";
+    SPEC_WATCH_MS = 3e4;
+  }
+});
+
 // src/platform/paths.ts
 import { homedir, platform as platform2 } from "node:os";
 import { join as join2 } from "node:path";
@@ -10,6 +21,8 @@ function isWin2() {
   return platform2() === "win32";
 }
 function stateDir() {
+  const override = process.env[STATE_DIR_ENV];
+  if (override) return override;
   if (isWin2()) {
     return join2(process.env.LOCALAPPDATA ?? join2(homedir(), "AppData", "Local"), PKG);
   }
@@ -57,6 +70,7 @@ var PKG, PIPE_PREFIX;
 var init_paths = __esm({
   "src/platform/paths.ts"() {
     "use strict";
+    init_constants();
     PKG = "pi-agentview";
     PIPE_PREFIX = "\\\\.\\pipe\\";
   }
@@ -67,12 +81,15 @@ import { spawn as spawn2 } from "node:child_process";
 import { EventEmitter } from "node:events";
 
 // src/platform/spawn.ts
+init_constants();
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 var ENV_CLI = "PI_AGENTVIEW_PI_CLI";
 var cliCache;
 function resolvePiCliPath() {
+  const override = process.env[ENV_CLI];
+  if (override) return override;
   if (cliCache) return cliCache;
   const mainPath = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
   const root = resolve(mainPath, "../..");
@@ -139,11 +156,8 @@ async function killTree(pid, graceMs = 3e3) {
   await waitForExit(pid, 1e3);
 }
 
-// src/platform/constants.ts
-var BROKER_CHILD_ENV = "PI_AGENTVIEW_BROKER_CHILD";
-var SPEC_WATCH_MS = 3e4;
-
 // src/broker/rpc-client.ts
+init_constants();
 var PiRpcClient = class extends EventEmitter {
   constructor(opts) {
     super();
@@ -641,6 +655,7 @@ async function releaseLock(path) {
 // src/registry.ts
 import { readFile as readFile3, mkdir as mkdir2, readdir, stat } from "node:fs/promises";
 import { dirname as dirname3, join as join3 } from "node:path";
+init_constants();
 init_paths();
 var BrokerStateStore = class {
   async read(id) {
@@ -684,6 +699,7 @@ async function unlinkQuiet(p) {
 
 // src/broker/main.ts
 init_paths();
+init_constants();
 function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {

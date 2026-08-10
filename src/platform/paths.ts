@@ -10,6 +10,7 @@
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { STATE_DIR_ENV } from "./constants.js";
 
 export const PKG = "pi-agentview";
 
@@ -20,6 +21,10 @@ function isWin(): boolean {
 }
 
 export function stateDir(): string {
+  // Test-isolation override (see STATE_DIR_ENV). Checked first so a test run gets
+  // a throwaway dir instead of the machine-wide default. Unset in production.
+  const override = process.env[STATE_DIR_ENV];
+  if (override) return override;
   if (isWin()) {
     return join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), PKG);
   }
