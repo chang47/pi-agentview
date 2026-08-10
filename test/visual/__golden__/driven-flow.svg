@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="751" height="188" viewBox="0 0 751 188" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
+<title>Agent View — fake-driven flow</title>
+<rect width="751" height="188" fill="#0d1117"/>
+<g dominant-baseline="alphabetic">
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.0000;0.1111" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#6e7681">·</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.1111;0.2222" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — running</text>
+<text x="291.2" y="89.6" fill="#6e7681"> 3s</text>
+<text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.2222;0.3333" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="316.4" y="89.6" fill="#6e7681"> 3s</text>
+<text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.3333;0.4444" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — responded</text>
+<text x="308.0" y="89.6" fill="#6e7681"> 3s</text>
+<text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.4444;0.5556" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   completed=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#3fb950">✓</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — Done — split the tokenizer out; all </text>
+<text x="534.8" y="89.6" fill="#6e7681"> 48s</text>
+<text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.5556;0.6667" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   completed=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#3fb950">✓</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — Done — split the tokenizer out; all </text>
+<text x="534.8" y="89.6" fill="#6e7681"> 48s</text>
+<text x="14.0" y="109.6" fill="#6e7681">  Done — split the tokenizer out; all 42 tests pass.</text>
+<text x="14.0" y="129.6" fill="#56d4dd">  reply ▸ </text>
+<text x="98.0" y="129.6" fill="#c9d1d9">█</text>
+<text x="14.0" y="149.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="169.6" fill="#6e7681"> type a reply · Enter send · ↑↓ switch · Esc close peek</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.6667;0.7778" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   completed=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#3fb950">✓</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — Done — split the tokenizer out; all </text>
+<text x="534.8" y="89.6" fill="#6e7681"> 48s</text>
+<text x="14.0" y="109.6" fill="#6e7681">  Done — split the tokenizer out; all 42 tests pass.</text>
+<text x="14.0" y="129.6" fill="#56d4dd">  reply ▸ </text>
+<text x="98.0" y="129.6" fill="#c9d1d9">ship it█</text>
+<text x="14.0" y="149.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="169.6" fill="#6e7681"> type a reply · Enter send · ↑↓ switch · Esc close peek</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.7778;0.8889" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   completed=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#3fb950">✓</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — Done — split the tokenizer out; all </text>
+<text x="534.8" y="89.6" fill="#6e7681"> 48s</text>
+<text x="14.0" y="109.6" fill="#6e7681">  Done — split the tokenizer out; all 42 tests pass.</text>
+<text x="14.0" y="129.6" fill="#3fb950">  sent ✓</text>
+<text x="14.0" y="149.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="169.6" fill="#6e7681"> type a reply · Enter send · ↑↓ switch · Esc close peek</text>
+</g>
+<g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.8889;1.0000" values="0;1;0"/>
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   completed=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Completed (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#3fb950">✓</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — Done — split the tokenizer out; all </text>
+<text x="534.8" y="89.6" fill="#6e7681"> 48s</text>
+<text x="14.0" y="109.6" fill="#56d4dd">  rename ▸ </text>
+<text x="106.4" y="109.6" fill="#c9d1d9">parser split█</text>
+<text x="14.0" y="129.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="149.6" fill="#6e7681"> type new title · Enter save · Esc cancel</text>
+</g>
+</g>
+</svg>

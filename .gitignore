@@ -2,6 +2,11 @@ node_modules/
 *.log
 *.tsbuildinfo
 .DS_Store
+*.stackdump
+
+# Ephemeral visual-test output. __golden__/ IS committed (the references); the
+# per-run renders under __artifacts__/ are not.
+test/visual/__artifacts__/
 
 # NOTE: dist/ is deliberately COMMITTED.
 # `pi install git:...` clones the repo and runs `npm install`, but it does not

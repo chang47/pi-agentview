@@ -36,7 +36,10 @@
   "scripts": {
     "build:broker": "esbuild src/broker.ts --bundle --platform=node --format=esm --outfile=dist/broker.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-extension.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-broker.ts",
+    "test": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-extension.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-broker.ts && npm run test:visual && npm run test:drive",
+    "test:visual": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/stills.ts",
+    "test:visual:update": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/stills.ts --update && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/drive.ts --update",
+    "test:drive": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/drive.ts",
     "prepublishOnly": "npm run typecheck && npm run build:broker"
   },
   "pi": {
