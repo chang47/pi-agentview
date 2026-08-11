@@ -14,8 +14,9 @@
 //
 // Scenarios (env PI_AGENTVIEW_FAKE_SCENARIO): "ok" (default) | "slow" | "error" | "dialog".
 // Reply text (env PI_AGENTVIEW_FAKE_REPLY): defaults to "OK".
-// Custom script (env PI_AGENTVIEW_FAKE_SCRIPT=<json>): [{event,text?,delayMs?,toolName?}, ...]
-//   emitted verbatim on each prompt (overrides the scenario).
+// Custom script (env PI_AGENTVIEW_FAKE_SCRIPT=<json>): [{event,text?,delayMs?,toolName?,target?,args?}, ...]
+//   emitted verbatim on each prompt (overrides the scenario). `target`/`args` on a
+//   tool_execution_start|update step surface the tool's target (path/command/…).
 
 import { appendFile } from "node:fs/promises";
 
@@ -70,8 +71,12 @@ async function runScript(steps) {
   for (const s of steps) {
     if (s.delayMs) await sleep(s.delayMs);
     if (s.event === "message_end") emit({ type: "message_end", message: assistant(s.text ?? reply) });
-    else if (s.event === "tool_execution_start") emit({ type: "tool_execution_start", toolName: s.toolName ?? "tool" });
-    else emit({ type: s.event });
+    else if (s.event === "tool_execution_start" || s.event === "tool_execution_update") {
+      const e = { type: s.event, toolName: s.toolName ?? "tool" };
+      if (s.target !== undefined) e.target = s.target;
+      if (s.args !== undefined) e.args = s.args;
+      emit(e);
+    } else emit({ type: s.event });
   }
 }
 
@@ -101,7 +106,9 @@ async function handlePrompt(message) {
     });
   }
 
-  emit({ type: "tool_execution_start", toolName: "edit" });
+  // Carry the tool's target (the parsed tool-call args) so the row shows
+  // "tool: edit src/tokenizer.ts", exercising deriveState's target extraction.
+  emit({ type: "tool_execution_start", toolName: "edit", args: { file_path: "src/tokenizer.ts" } });
   await sleep(step);
 
   if (scenario === "error") {

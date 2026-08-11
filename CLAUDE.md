@@ -19,7 +19,7 @@ Read this before verifying a change. Everything here is offline and deterministi
 |---|---|
 | `npm run typecheck` | `tsc --noEmit`, zero errors |
 | `npm test` | The whole suite offline: `smoke.ts`, `smoke-extension.ts`, `smoke-broker.ts` (all via the fake pi), then the visual stills + driven flow |
-| `npm run test:visual` | Assert the 9 golden **stills** — one per Agent View screen state |
+| `npm run test:visual` | Assert the 10 golden **stills** — one per Agent View screen state |
 | `npm run test:drive` | Assert the **driven-flow** animated SVG |
 | `npm run test:interactions` | Drive the REAL `AgentViewComponent` by keystroke — assert behavior + a filmstrip golden |
 | `npm run test:visual:update` | Regenerate ALL visual goldens after an INTENTIONAL UI change — review the diff before committing |

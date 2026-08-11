@@ -33,6 +33,47 @@ function summarize(text: string): string {
   return oneLine.length > 120 ? oneLine.slice(0, 117) + "…" : oneLine;
 }
 
+// Argument keys pi's built-in tools carry, ordered by how well each names the
+// thing the tool is acting on. The first present one becomes the row's "target".
+const TOOL_TARGET_KEYS = [
+  "file_path", "filePath", "path", "file",
+  "command", "cmd",
+  "pattern", "query", "url", "name",
+];
+
+function firstString(...vals: unknown[]): string | undefined {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return undefined;
+}
+
+/** A concise human "target" (path / command / pattern / url) for a tool event.
+ *  pi emits the parsed tool-call arguments alongside the tool name; we surface
+ *  the most meaningful one so a working row reads "tool: edit src/foo.ts", not
+ *  just "tool: edit". Returns undefined when the event carries no useful detail. */
+function toolTarget(ev: RpcMessage): string | undefined {
+  const args = (ev.args ?? ev.arguments ?? ev.input) as Record<string, unknown> | undefined;
+  const raw =
+    firstString(ev.target) ??
+    (args && typeof args === "object" ? firstString(...TOOL_TARGET_KEYS.map((k) => args[k])) : undefined);
+  if (!raw) return undefined;
+  const oneLine = raw.replace(/\s+/g, " ").trim();
+  return oneLine.length > 48 ? oneLine.slice(0, 47) + "…" : oneLine;
+}
+
+/** Compose the activity label shown for a running tool. */
+function toolActivity(name: string, target: string | undefined): string {
+  return target ? `tool: ${name} ${target}` : `tool: ${name}`;
+}
+
+/** Recover the tool name from an existing "tool: <name> …" activity, so a
+ *  progress update that omits the name can still refine its target. */
+function toolNameFromActivity(activity: string): string | undefined {
+  const m = /^tool:\s+(\S+)/.exec(activity);
+  return m ? m[1] : undefined;
+}
+
 /** Returns the next state, or null if the event is irrelevant to the view. */
 export function deriveState(prev: BrokerState, ev: RpcMessage, seq: number): BrokerState | null {
   const now = Date.now();
@@ -45,7 +86,17 @@ export function deriveState(prev: BrokerState, ev: RpcMessage, seq: number): Bro
 
     case "tool_execution_start": {
       const name = String(ev.toolName ?? "tool");
-      return { ...base, state: ensureWorking(base.state), activity: `tool: ${name}` };
+      return { ...base, state: ensureWorking(base.state), activity: toolActivity(name, toolTarget(ev)) };
+    }
+
+    case "tool_execution_update": {
+      // Progress on the running tool. Refine the detail if the event carries a
+      // fresh name/target; if it carries neither, keep the current activity
+      // rather than clobbering "tool: edit foo.ts" with a bare "tool: tool".
+      const target = toolTarget(ev);
+      if (ev.toolName === undefined && target === undefined) return { ...base };
+      const name = ev.toolName !== undefined ? String(ev.toolName) : toolNameFromActivity(base.activity) ?? "tool";
+      return { ...base, state: ensureWorking(base.state), activity: toolActivity(name, target) };
     }
 
     case "compaction_start":
