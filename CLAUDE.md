@@ -106,7 +106,10 @@ A reviewer must **see** the proof in the PR, not just read "tests passed." For a
    (replace `<BRANCH>` with your branch). PNG renders inline on GitHub; the SVG golden stays for
    diffing. Both, so nothing is "stored somewhere you have to go check out."
 
-Stills only — `test:evidence` can't render the animated driven/interaction flows.
+For an **interaction / "watch the process"** (typing, narrowing, state changes), use
+`npm run test:gif` → an animated **GIF** under `__evidence__/` (each real frame → resvg pixels →
+gifenc). GitHub renders GIFs inline and auto-plays them; it does **not** animate our SVGs, so a GIF
+is the format for motion. Same rule — commit it *and* embed it. (`test:evidence` is stills-only.)
 
 ## Guard rails
 
