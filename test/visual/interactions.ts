@@ -103,6 +103,36 @@ const c = runScenario(attachedRoster, [{ key: KEY.enter, label: "Enter on attach
 ok("Enter on an attached row does NOT resume", !c.done.some((r) => r?.action === "resume"), JSON.stringify(c.done));
 ok("d on an attached row does NOT remove", !c.calls.some((x) => x.fn === "remove"), JSON.stringify(c.calls));
 
+// --- Scenario D: filter narrows the list; state filter; no-match; Esc clears --
+console.log("[D] filter narrows the list, then clears");
+const filterRoster: ManagedRow[] = [
+  row({ id: "s1", title: "refactor the parser", state: "working", activity: "tool: edit", elapsedMs: 47_000 }),
+  row({ id: "s2", title: "fix the flaky uploader test", state: "completed", activity: "responded", reply: "done", elapsedMs: 5_000 }),
+  row({ id: "s3", title: "add retry to the uploader", state: "working", activity: "running", elapsedMs: 12_000 }),
+];
+const has = (frames: string[][], s: string): boolean => lastFrame(frames).some((l) => l.includes(s));
+
+const d1 = runScenario(filterRoster, [{ key: "/" }, { text: "uploader" }]);
+ok(
+  "free-text filter shows only matching rows",
+  has(d1.frames, "uploader test") && has(d1.frames, "add retry") && !has(d1.frames, "refactor the parser"),
+  lastFrame(d1.frames).join("\n"),
+);
+const d2 = runScenario(filterRoster, [{ key: "/" }, { text: "s:working" }]);
+ok(
+  "s:working shows only working rows",
+  has(d2.frames, "refactor the parser") && has(d2.frames, "add retry") && !has(d2.frames, "uploader test"),
+  lastFrame(d2.frames).join("\n"),
+);
+const d3 = runScenario(filterRoster, [{ key: "/" }, { text: "zzz" }]);
+ok("a non-matching filter shows the 'no match' line", has(d3.frames, "No sessions match"), lastFrame(d3.frames).join("\n"));
+const d4 = runScenario(filterRoster, [{ key: "/" }, { text: "uploader" }, { key: KEY.esc }]);
+ok(
+  "Esc clears the filter (all rows return)",
+  has(d4.frames, "refactor the parser") && has(d4.frames, "uploader test") && has(d4.frames, "add retry"),
+  lastFrame(d4.frames).join("\n"),
+);
+
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });
 await mkdir(ARTIFACT_DIR, { recursive: true });
