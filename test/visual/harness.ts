@@ -52,6 +52,11 @@ export class MockManager {
   }
   sendReply(id: ManagedId, text: string): boolean {
     this.calls.push({ fn: "sendReply", args: [id, text] });
+    // Mirror the real BrokerManager: an `fg:` row is driven by its own terminal
+    // and is ALWAYS refused, regardless of replyOk. Without this the mock could
+    // report success where production never can, and the view's attach-specific
+    // error path would look covered while never actually being exercised.
+    if (id.startsWith("fg:")) return false;
     return this.replyOk;
   }
   async setTitle(id: ManagedId, text: string): Promise<void> {
