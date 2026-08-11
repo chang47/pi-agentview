@@ -1,9 +1,9 @@
 # Spec: agentdeck — a cross-repo PR-review cockpit (manual-validation router)
 
-> **Type:** design spec. **Produced for:** Brief B (the review/validation dashboard). **Consumes:** Thread C's validation engine (`/project validate`). **Date:** 2026-08-10. **Home:** new standalone repo `agentdeck`. **Status:** DESIGN ONLY — do not build.
+> **Type:** design spec. **Produced for:** Brief B (the review/validation dashboard). **Consumes:** Thread C's validation engine (`/project validate`). **Date:** 2026-08-10. **Home:** new standalone repo `agentdeck`. **Status:** APPROVED FOR BUILD — P0 MVP (2026-08-10; north star §9 + P2 remain backlog).
 > Sources are inline; unverifiable claims are flagged `[UNVERIFIED]`. Grounded against real `gh` output (chang47, 8 open PRs) and `~/.claude/skills/project/skill.md`.
-> **Bottom line:** a **static local web page**. You paste a GitHub token; it fetches every open PR across all your repos from the GitHub API and renders one **deterministic** row each — the PR's own title, a **risk badge**, and a **lane** — sorted most-needs-attention first. **No AI in the surface, no server, no build step:** the page is rules over API data, and you refresh it by reloading. The trust signal is **not** a model's opinion — it is the label Thread C's adversarial validator already wrote after independently reproducing the PR's `Done when:` proof; a PR with **no validator label is itself the signal that it needs *you*.** It is a **router, not a reviewer**, and it is **read-only** — no merge, no auto-land. The **north star** (designed, not built) is a per-row "drive & validate" hand-off that reproduces the change locally; that is the *only* place a local process ever enters, and it lives outside the read-only view.
-> Read §3 (Scope), §5 (Risk model), §6 (Architecture — note: serverless), and §12 (Open questions) before starting the implementation plan.
+> **Bottom line:** a **static web app + one stateless auth function**. You **Sign in with GitHub**; the browser fetches every open PR across all your repos from the GitHub API and renders one **deterministic** row each — the PR's own title, a **risk badge**, and a **lane** — sorted most-needs-attention first. **No AI in the surface, no database, no build-time content:** the page is rules over API data, and you refresh it by reloading. The **only** backend is a tiny stateless function doing the OAuth `code → token` exchange (a client secret can't live in a browser); it **stores nothing** — which is exactly what makes the app safely **hostable** later (everyone sees only their own GitHub data). The trust signal is **not** a model's opinion — it is the label Thread C's adversarial validator already wrote after independently reproducing the PR's `Done when:` proof; a PR with **no validator label is itself the signal that it needs *you*.** It is a **router, not a reviewer**, and it is **read-only** — no merge, no auto-land. The **north star** (designed, not built) is a per-row "drive & validate" hand-off that reproduces the change locally, outside the read-only view.
+> **Stack:** Vite + TypeScript SPA + a Cloudflare Pages Function for the OAuth exchange (hostable free, stores nothing). Read §3 (Scope), §5 (Risk model), §6 (Architecture), and §12 (Open questions) before starting the implementation plan.
 
 Tools surveyed: Graphite · gh-dash · CodeRabbit · GitHub native (+ Copilot) · Aviator · Mergify · Greptile · Ellipsis · Sourcery · Sourcegraph · Codegen.
 
@@ -57,17 +57,17 @@ The market gap the brief identified is **"AI-in-the-row triage"**: a per-row AI 
 8 open PRs across 5 repos — pi-agentview ×3, pipkin ×2, Stock-Indicators ×1, Synod-Labs ×1, My-Insomnia-Pal ×1; several are drafts months old. **pipkin #12 already carries the `validated` label** (*"Adversarial validation reproduced the Done-when (advisory)"*) — the trust signal is live in production data. pipkin #13 (`docs(backlog): …`) is a clean Lane-A (read) row. **The MVP shows all 8**, drafts and stale ones included — a good nudge to clean up dead work.
 
 ### 2c. Everything the row needs is one GitHub-API read (no CLI, no AI)
-The browser can fetch it all directly with the pasted token. Recommended: **one GraphQL query** over `search(query:"is:pr is:open author:@me", type:ISSUE)` pulling, per PR: `title, url, number, isDraft, createdAt, headRefOid, additions, deletions, changedFiles, labels(first:20), reviewDecision, mergeable, commits(last:1){ statusCheckRollup.state }, files(first:100){ path }, repository{ nameWithOwner }`. (REST equivalent = `/search/issues` + per-PR `/pulls/{n}`, `/pulls/{n}/files`, `/commits/{sha}/check-runs` — more round-trips; GraphQL preferred.) The GitHub API supports authenticated **CORS from the browser** `[UNVERIFIED — confirm the exact endpoints + rate-limit headers at build]`, which is what makes a serverless client-side page viable.
+The browser fetches it all directly with the user's OAuth token (from Sign-in-with-GitHub, §6). Recommended: **one GraphQL query** over `search(query:"is:pr is:open author:@me", type:ISSUE)` pulling, per PR: `title, url, number, isDraft, createdAt, headRefOid, additions, deletions, changedFiles, labels(first:20), reviewDecision, mergeable, commits(last:1){ statusCheckRollup.state }, files(first:100){ path }, repository{ nameWithOwner }`. (REST equivalent = `/search/issues` + per-PR `/pulls/{n}`, `/pulls/{n}/files`, `/commits/{sha}/check-runs` — more round-trips; GraphQL preferred.) The GitHub API supports authenticated **CORS from the browser** `[UNVERIFIED — confirm the exact endpoints + rate-limit headers at build]`, which is what keeps all *data* client-side. If any needed endpoint refuses browser CORS, the same auth function (§6) proxies it — still no AI, still no storage.
 
 ### 2d. Claude Code seam — reserved for the north star only (§9)
-The MVP touches no local process. For §9's optional "drive & validate," the relevant fact (verify at build, flag surface `[UNVERIFIED]`): a browser cannot exec local binaries, so a repro hand-off needs *either* the `claude-cli://open?cwd=&q=` URL scheme (pre-fills a prompt, needs a keypress; GitHub markdown strips such links) *or* a tiny local companion that shells **`claude -p … --output-format stream-json`**. Both are **out of the MVP**; the read-only page never introduces a server.
+The MVP touches no local process. For §9's optional "drive & validate," the relevant fact (verify at build, flag surface `[UNVERIFIED]`): a browser cannot exec local binaries, so a repro hand-off needs *either* the `claude-cli://open?cwd=&q=` URL scheme (pre-fills a prompt, needs a keypress; GitHub markdown strips such links) *or* a tiny local companion that shells **`claude -p … --output-format stream-json`**. Both are **out of the MVP**; the read-only page never runs a local process.
 
 ---
 
 ## 3. Scope
 
 ### P0 — MVP (this spec's build target)
-A **static local web page** (no server, no AI, no build pipeline) that, given a pasted GitHub token, fetches every open PR across all your repos and renders one **deterministic** row each: **badge · title · lane · repo · age · diffstat · draft flag · link to the PR**, sorted most-needs-attention first. Rules do all the work (lane §4, badge §5). Refresh = reload the page. **Read-only. Shows everything (all authors, all drafts).**
+A **static web app** (no AI, no database) that, after **Sign in with GitHub**, fetches every open PR across all your repos and renders one **deterministic** row each: **badge · title · lane · repo · age · diffstat · draft flag · link to the PR**, sorted most-needs-attention first. Rules do all the work (lane §4, badge §5). Refresh = reload the page. **Read-only. Shows everything (all authors, all drafts).** The only backend is the stateless OAuth-exchange function (§6). Runs locally (`vite dev` + `wrangler pages dev`) and is **hostable unchanged** (Cloudflare Pages) — it stores nothing, so every user sees only their own data.
 
 ### P1 — polish + the feature you asked for
 - **Inline content expansion** — a **side pane or accordion** per row that pulls the PR's diff + body + the validator's evidence comment into the same view, so a quick review never leaves the page. *(Your explicit request; §11.)*
@@ -85,8 +85,8 @@ A second surface over your **issues**, not just PRs: the TBDs, and the **depende
 - **No AI in the surface.** The only intelligence in the system is the upstream validator; the page renders its label. Rendering the dashboard is a zero-model-call operation, always.
 - **Not a code reviewer.** agentdeck never generates a verdict; it reads Thread C's.
 - **No merge, no auto-land, in any tier.** "Trust the rest" = *visual de-emphasis*, never automation. (If auto-landing is ever wanted, it belongs upstream in the validator/drain — it lands immediately and never appears as a dashboard action.)
-- **No server in the MVP.** Static page + client-side `fetch`. A local process appears only at the §9 north star.
-- **No hosted/multi-user service, no OAuth app.** Local, single-user, personal. Token lives in the browser (§6).
+- **No data server, no database.** All PR data is fetched client-side; the only backend is the stateless OAuth-exchange function, which **stores nothing** (no users table, no PR cache, no analytics). A *local* process appears only at the §9 north star.
+- **Multi-user by data-isolation, not by accounts.** It's hostable, but there is no account system or shared state — each visitor authenticates with their own GitHub and sees only their own PRs. Nothing about one user is ever stored or visible to another.
 
 ---
 
@@ -118,18 +118,24 @@ The badge is a **deterministic function of the validator's label + GitHub signal
 
 **Sort:** ⛔ and 🔴 first, then 🟡, then 🟢 sinks to the bottom; within a bucket by risk-path weight, then age. Drafts and stale PRs are **shown**, sorted below active work (a visible backlog to prune).
 
+### 5a. The label contract (agentdeck ⇄ validator)
+The badge is only as good as the labels the validator emits, so the two must agree on a fixed vocabulary. agentdeck reads exactly these GitHub labels: `validated` → eligible 🟢/🟡 · `validation-failed` → ⛔ · `validation-uncertain` → 🔴 · `drain-hold` → ⛔ · (`auto` → informational, "this repo runs the drain"). This vocabulary already exists in `/project` (`skill.md:174-177`); agentdeck **depends on** it and invents no labels. **Trust model (your call): assume best intent** — the *presence* of `validated` is trusted at face value; agentdeck does **not** verify the validator actually ran (a hand-added label would be believed). Anti-spoofing (label author-restricted to the validator identity, or requiring the paired evidence comment) is **deferred** — noted, not built. A one-line follow-up to `/project` may be needed so every adjudicated PR carries its label; tracked in §11.
+
 ---
 
-## 6. Architecture (serverless, deterministic)
+## 6. Architecture (static SPA + one stateless auth function)
 
-Four small units, all client-side. **No server. No `gh`. No `claude`. No LLM.** The page is a static bundle you open locally (or `file://`), plus the four rule/fetch modules.
+Five small units. Four are **client-side** (no `gh`, no `claude`, no LLM); one is a **stateless serverless function** whose *only* job is the OAuth `code → token` exchange. **No database, nothing stored.**
 
-1. **Auth** (`auth`) — a one-field "paste your GitHub token" screen; the token is stored in `localStorage` and sent as the `Authorization: Bearer` header on API calls. This is the "log in with my credentials" model, thinnest form — a **fine-scoped PAT** (repo read). No OAuth app, no secret, no server. *(OAuth device-flow is a later nicety, §11/§12.)* *Testable via:* injected fake token; no network in tests.
-2. **Collector** (`collector`) — the §2c GraphQL query via `fetch()`, paginated, across all repos. Normalizes to `PrRow[]`. *Depends on:* Auth + GitHub API. *Testable via:* **captured GitHub-API JSON fixtures** (no network).
-3. **Classifier** (`rules`) — pure functions: lane (§4) + badge + `riskReasons` (§5) + sort key. This is the "specific rules that detect and render our work" — hard-coded for the current use case, factored so a future settings/watchlist layer swaps the rule inputs without touching the renderer. *Depends on:* nothing (pure). *Testable via:* table-driven unit tests — the highest-value tests in the repo.
-4. **Renderer/SPA** (`web`) — renders the sorted feed (badge · title · lane · repo · age · diffstat · draft · PR link), plus P1 filters + inline pane. *Depends on:* Collector + Classifier output. *Testable via:* **golden render** of a fixture feed (a still you open in a browser and diff — pi-agentview's visual-golden pattern).
+1. **Auth (client)** (`auth`) — the **Sign in with GitHub** button: redirects to GitHub's authorize URL (scope `repo` read + `read:org`), receives the `?code=…` on return, hands it to the auth function (unit 2), and keeps the resulting token in memory / `sessionStorage`. This is the "log in with my credentials" model you asked for. *Testable via:* an injected fake token; no network in tests.
+2. **Auth function (serverless)** (`functions/auth`) — a Cloudflare Pages Function: takes the `code`, POSTs it to `github.com/login/oauth/access_token` with the **`GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`** (server-side secrets, never shipped to the browser), returns the token. **Stateless — stores nothing.** Optionally proxies GitHub API calls if a needed endpoint refuses browser CORS (§2c). *Testable via:* a mocked GitHub token endpoint; the secret is env-injected.
+3. **Collector (client)** (`collector`) — the §2c GraphQL query via `fetch()` with the token, paginated, across all repos → `PrRow[]`. *Testable via:* **captured GitHub-API JSON fixtures** (no network).
+4. **Classifier (client)** (`rules`) — pure functions: lane (§4) + badge + `riskReasons` (§5) + sort key + the **label contract** (§5a). Hard-coded for the current use case, factored so a future settings/watchlist layer swaps the rule inputs without touching the renderer. *Testable via:* table-driven unit tests — the highest-value tests in the repo.
+5. **Renderer/SPA (client)** (`web`) — renders the sorted feed (badge · title · lane · repo · age · diffstat · draft · PR link), plus P1 filters + inline pane. *Testable via:* **golden render** of a fixture feed (a still you open in a browser and diff — pi-agentview's visual-golden pattern).
 
-**The one dependency:** your GitHub token. That's the whole "no new credentials, no AI" story — the page is rules over authenticated API data, and it is honest by construction (nothing is summarized or invented; every cell traces to an API field or a rule).
+**The one secret:** the GitHub OAuth App's client ID + secret, held only by the auth function. Everything else is rules over the user's own authenticated API data — honest by construction (nothing summarized or invented; every cell traces to an API field or a rule), and hostable because the backend holds no user data.
+
+> **⚠ One-time human setup (only you can do this):** register a **GitHub OAuth App** at `github.com/settings/developers` → get **Client ID + Client Secret**, set the callback URL (`http://localhost:5173/auth/callback` for local; the Pages URL when hosted). Drop them into `.dev.vars` / Pages env as `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`. The build wires everything against these; it can't create the OAuth App for you.
 
 ---
 
@@ -169,7 +175,7 @@ Four small units, all client-side. **No server. No `gh`. No `claude`. No LLM.** 
 ## 8. Data flow
 
 ```
-[paste GitHub token]  ──►  Auth (localStorage)
+[Sign in with GitHub] ─► Auth (client) ─► code ─► Auth fn (stateless) ─► token
         │
         ▼
 GitHub GraphQL API  ──►  Collector  ──►  PrRow[] (raw API fields, all repos)
@@ -181,7 +187,7 @@ GitHub GraphQL API  ──►  Collector  ──►  PrRow[] (raw API fields, al
                               Renderer/SPA  ──►  sorted feed
 ```
 
-One-way read, entirely in the browser. **Refresh = reload the page** — no button, no poll, no LLM, no background job. The only path that ever leaves the browser is the §9 north-star hand-off.
+Data is a one-way read, entirely in the browser (the auth function is touched once, at sign-in, and returns to statelessness). **Refresh = reload the page** — no button, no poll, no LLM, no background job. The only path that ever runs a local process is the §9 north-star hand-off.
 
 ---
 
@@ -197,11 +203,12 @@ One-way read, entirely in the browser. **Refresh = reload the page** — no butt
 
 ---
 
-## 10. Home, name, and test harness
+## 10. Home, name, stack, and test harness
 
 - **New standalone repo: `agentdeck`.** Agent-agnostic (any PR from any tool, not pi-specific), own install/release; keeping it out of pi-agentview preserves that project's crisp "pi fleet dashboard" scope. It **borrows pi-agentview's patterns** (small bounded units, the **offline-deterministic test story**), not its code.
-- **This spec incubates** at `pi-agentview/docs/superpowers/specs/` (beside the sibling Thread specs) until the `agentdeck` repo exists.
-- **Test harness (borrowed pattern), and it fits perfectly now that there's no AI:** fully **offline and deterministic** — captured **GitHub-API JSON fixtures** → table-driven unit tests for the Classifier (the real logic) + a **golden render** of the feed. There is nothing non-deterministic to stub: no model, no server, no `gh`, no network in the test path. This is the payoff of the no-AI-in-surface decision — the whole product is testable without a single live call.
+- **Stack:** **Vite + TypeScript SPA** (client units 1, 3, 4, 5) + a **Cloudflare Pages Function** (unit 2, the OAuth exchange). Local dev = `vite dev` + `wrangler pages dev`; deploy = Cloudflare Pages (free, no data store). Chosen because it's hostable-with-zero-storage and matches your existing wrangler/Cloudflare toolchain; the SPA is host-agnostic static output, so only the one function is Cloudflare-flavored.
+- **This spec incubates** at `pi-agentview/docs/superpowers/specs/`; the built repo lives at `~/Projects/agentdeck` and on GitHub as `chang47/agentdeck`.
+- **Test harness (borrowed pattern), and it fits perfectly now that there's no AI:** fully **offline and deterministic** — captured **GitHub-API JSON fixtures** → **Vitest** table-driven unit tests for the Classifier (the real logic) + the auth function (mocked token endpoint) + a **golden render** of the feed. Nothing non-deterministic to stub: no model, no live GitHub, no network in the test path. This is the payoff of the no-AI-in-surface decision — the whole product is testable without a single live call.
 
 ---
 
@@ -212,24 +219,28 @@ One-way read, entirely in the browser. **Refresh = reload the page** — no butt
 3. **Saved settings / personal watchlist (P2).** Replace the hard-coded "what counts as our work / which repos / risk paths" with editable, persisted settings — the generic version of the coupling we're accepting now. Unblocks other users / new use cases.
 4. **North-star "drive & validate" hand-off (post-MVP).** The §9 bridge — a *separate* local companion or deep link, never embedded in the read-only view.
 5. **Issue-list mode (P2).** The §3 "issues-in" half: cross-repo issue feed, blocked-on-PR **dependency awareness**, startable-now ranker; re-surfaces `/project`'s issue queue.
-6. **OAuth device-flow login (P2).** Nicer than a pasted PAT if the tool ever leaves your machine.
+6. **Anti-spoofing on the label contract (P2).** Verify a `validated` label was written by the validator identity and/or has a paired evidence comment, instead of trusting presence (§5a). Deferred — best intent for now.
+7. **`/project` follow-up so labels are always emitted (dependency, small).** Confirm every adjudicated PR agentdeck should trust actually receives its label; a one-line change to `skill.md` if not (§5a).
 
 ---
 
-## 12. Open questions (most resolved by your review)
+## 12. Decisions (all resolved in review) + build-time checks
 
-**Resolved:**
+**Resolved by you:**
 - **Trust-the-rest scope** → **read-only forever**; no one-key merge, no auto-land in any tier. Auto-landing, if ever, lives upstream and never appears here.
 - **Summariser model/cost** → **N/A**: there is no summariser. The validator is the only intelligence; the page is rules.
 - **Authorship filter** → **show all authors.** The validator *label* (not who opened the PR) is the trust axis; no label = your signal.
 - **Refresh model** → **reload the page.** No button, no poll, nothing LLM-tied.
 - **Drafts** → **show everything**, sorted below active work (a backlog to prune).
+- **Login** → **Sign in with GitHub (OAuth)**, not a pasted token → the one stateless auth function (§6). PAT is not used.
+- **Risk paths + scope** → my judgment: default risk paths = CI/`.github/workflows`, config/secrets, test deletions, guard files; scope = `is:pr is:open author:@me` across all repos. Become editable settings later (§11.3).
+- **Delivery/hosting** → local static serve now (`vite dev` + `wrangler pages dev`); **hostable unchanged** on Cloudflare Pages (stores nothing).
+- **Label spoofing** → **assume best intent**; trust label presence; anti-spoofing deferred (§5a, §11.6).
 
-**Still open:**
-1. **Token model.** A pasted fine-scoped PAT in `localStorage` (recommended, thinnest) vs a proper OAuth device-flow (§11.6). **Recommend: PAT for MVP**, since it's local and single-user — is that acceptable, or do you want the login to *feel* like "Sign in with GitHub" from day one?
-2. **Risk-path set + "what counts as our work."** The hard-coded defaults (risk paths: CI/`.github/workflows`, config, auth/secrets, test deletions, guard files; scope: `author:@me` across all your repos). Confirm the starting rules, knowing they become editable settings later (§11.3).
-3. **CORS reality check `[UNVERIFIED]`.** The serverless design assumes the GitHub API answers authenticated browser `fetch` for search + PR detail + check-runs. If any needed endpoint refuses CORS, the fallback is a ~30-line local proxy (still no AI) — a small deviation from "zero server," to confirm at build.
-4. **Static delivery.** Plain `file://` open, or a trivial `vite preview`/`python -m http.server` for the local page? (No build step required either way for the logic; this is only how you open it.) **Recommend: a one-command local static serve** to avoid `file://` fetch/CORS quirks.
+**Build-time checks (not blockers — confirm while implementing):**
+1. **CORS `[UNVERIFIED]`** — confirm the GitHub GraphQL/REST endpoints answer authenticated browser `fetch`. If any refuses, the auth function proxies it (§2c/§6) — still no AI, still no storage.
+2. **OAuth scopes** — confirm minimum scope for private-repo PR read + labels + checks (likely `repo` + `read:org`); prefer the narrowest that works.
+3. **Label emission** — verify `/project` actually writes a label on every PR agentdeck should trust; one-line `skill.md` follow-up if not (§11.7).
 
 ---
 
