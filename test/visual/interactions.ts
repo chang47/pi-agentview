@@ -103,6 +103,33 @@ const c = runScenario(attachedRoster, [{ key: KEY.enter, label: "Enter on attach
 ok("Enter on an attached row does NOT resume", !c.done.some((r) => r?.action === "resume"), JSON.stringify(c.done));
 ok("d on an attached row does NOT remove", !c.calls.some((x) => x.fn === "remove"), JSON.stringify(c.calls));
 
+// --- Scenario D: renaming an ATTACHED row goes to pi, not to a broker ---------
+// `r` is allowed on an attached row (unlike Enter/d), but the rename must travel a
+// different road: BrokerManager.setTitle drops `fg:` ids on the floor, so routing it
+// there would swallow the rename silently. It has to reach onRenameForeground —
+// wired to pi.setSessionName in src/index.ts.
+console.log("[D] attached row: r renames the foreground session via pi, not the broker");
+const d = runScenario(attachedRoster, [
+  { key: "r", label: "r: rename attached" },
+  { text: " (live)", label: "edit title" },
+  { key: KEY.enter, label: "Enter: save title" },
+]);
+ok(
+  "rename prompt is seeded with the current title (edit, don't retype)",
+  d.frames[1].some((ln) => ln.includes("rename ▸") && ln.includes("this terminal█")),
+  d.frames[1].join("\n"),
+);
+ok(
+  "attached rename reaches the foreground callback (pi.setSessionName)",
+  d.foregroundRenames.length === 1 && d.foregroundRenames[0] === "this terminal (live)",
+  JSON.stringify(d.foregroundRenames),
+);
+ok(
+  "attached rename is NOT routed to the broker (setTitle would drop it)",
+  !d.calls.some((x) => x.fn === "setTitle"),
+  JSON.stringify(d.calls),
+);
+
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });
 await mkdir(ARTIFACT_DIR, { recursive: true });
