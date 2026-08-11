@@ -113,16 +113,28 @@ cd pi-agentview
 npm install
 npm run typecheck
 npm run build:broker    # bundle the broker -> dist/broker.mjs
-npm test                # 62 tests across 3 suites
+npm test                # whole suite, fully OFFLINE — no model, no key, no network
 ```
 
-`npm test` runs three suites: platform + registry (12), render + BrokerManager + safety regressions (25), and broker/RPC including a **live model round-trip** (25).
+**`npm test` is fully offline and deterministic.** It runs the three code suites — platform +
+registry (12), render + BrokerManager + safety regressions (25), broker/RPC/IPC (25) — plus the
+visual suites (9 golden **stills** + a driven-flow animated SVG). The broker suite drives a
+scripted **fake pi** (`test/fakes/fake-pi.mjs`) instead of a real agent, so there is no model
+call, credential, or network dependency anywhere. See [`CLAUDE.md`](./CLAUDE.md) for how the fake
+works and how to add/regenerate visual goldens (`npm run test:visual:update`).
+
+The visual evidence is terminal-style SVG you can open in a browser — `test/visual/__golden__/`.
+For a UI change, **look at the picture**, not just the assertion.
 
 To iterate against your live working copy instead of an installed copy:
 
 ```bash
 pi -e ./src/index.ts
 ```
+
+> **After changing any broker-bundled code** (`src/broker.ts` or anything it imports —
+> `platform/*`, `broker/*`, `registry.ts`, `types.ts`), rerun `npm run build:broker`: the broker
+> runs as a subprocess from the committed `dist/broker.mjs`, not from source.
 
 `dist/broker.mjs` is committed on purpose: `pi install git:` clones the repo and runs `npm install`, but not our build script, so the bundled broker has to already be in the tree.
 

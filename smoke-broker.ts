@@ -13,6 +13,7 @@ import { IpcServer } from "./src/broker/ipc.js";
 import { BrokerSpecStore } from "./src/registry.js";
 import { socketAddress } from "./src/platform/paths.js";
 import { newNonce } from "./src/platform/pid.js";
+import { PI_CLI_ENV, STATE_DIR_ENV } from "./src/platform/constants.js";
 
 let pass = 0;
 let fail = 0;
@@ -29,6 +30,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const BROKER_MJS = join(__dirname, "dist", "broker.mjs");
+const FAKE_PI = join(__dirname, "test", "fakes", "fake-pi.mjs");
+
+// Route EVERY `pi --mode rpc` spawn in this suite through the fake worker, so the
+// whole broker smoke runs offline — no model, no credentials, no network. We are
+// testing the real PiRpcClient / broker / IPC / journal / state code against a
+// scripted agent; the real-pi integration check lives in a separate gated test.
+process.env[PI_CLI_ENV] = FAKE_PI;
 
 console.log(`broker smoke test — platform: ${process.platform}, node ${process.version}`);
 
@@ -152,6 +160,13 @@ console.log("\n[2c] IpcServer auth + snapshot + broadcast + lease");
 // ---------------------------------------------------------------------------
 console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny prompt)");
 {
+  // Isolated state dir so the spec we write and the broker we spawn agree on it
+  // (nothing lands in the machine-wide default). The broker inherits process.env,
+  // so setting it here reaches the broker child. PI_CLI_ENV -> fake is set at the
+  // top of this file.
+  const stateTmp = await mkdtemp(join(tmpdir(), "e2e-state-"));
+  process.env[STATE_DIR_ENV] = stateTmp;
+
   const id = "e2e-" + Date.now();
   const nonce = newNonce();
   const tmp = await mkdtemp(join(tmpdir(), "e2e-"));
@@ -162,7 +177,7 @@ console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny promp
     id,
     jsonlPath: jsonl,
     cwd: tmp,
-    model: "zai/glm-5.2",
+    model: "fake/echo",
     thinkingLevel: "low",
     initialTask: "Reply with exactly the two characters: OK",
     createdAt: Date.now(),
@@ -192,8 +207,14 @@ console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny promp
   );
   ok("observed agent_settled event", sawSettled, brokerErr.join("").slice(0, 300));
 
-  const finalState = inbox.filter((m) => m.type === "state").pop()?.state;
-  ok("final state is completed", finalState?.state === "completed", `state=${finalState?.state}`);
+  // The completed state may arrive as a live "state" broadcast (client connected
+  // mid-run) OR only in the connect "snapshot" (a fast worker settles before the
+  // client connects — the fake does). Read the latest state-bearing message from
+  // either, and wait for it: the state broadcast trails its event by a tick.
+  const latestState = () => inbox.filter((m) => m.type === "state" || m.type === "snapshot").map((m) => m.state).pop();
+  const sawCompleted = await waitFor(() => latestState()?.state === "completed", 90_000, 100);
+  ok("final state is completed", sawCompleted, `state=${latestState()?.state}`);
+  const finalState = latestState();
   ok("finalResponse captured", typeof finalState?.finalResponse === "string" && finalState.finalResponse.length > 0, `finalResponse=${finalState?.finalResponse}`);
 
   // shutdown via IPC
@@ -205,9 +226,9 @@ console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny promp
 
   c.destroy();
   await rm(tmp, { recursive: true, force: true });
-  // Clean broker state artifacts.
-  const { rm: rm2 } = await import("node:fs/promises");
-  await rm2(join(process.env.LOCALAPPDATA ?? "", "pi-agentview", "sessions", id), { recursive: true, force: true }).catch(() => {});
+  // The isolated state dir holds every broker artifact for this run; drop it whole.
+  await rm(stateTmp, { recursive: true, force: true }).catch(() => {});
+  delete process.env[STATE_DIR_ENV];
 }
 
 console.log(`\n${fail === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${fail} failed`);

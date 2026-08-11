@@ -36,7 +36,13 @@
   "scripts": {
     "build:broker": "esbuild src/broker.ts --bundle --platform=node --format=esm --outfile=dist/broker.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-extension.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-broker.ts",
+    "test": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-extension.ts && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs smoke-broker.ts && npm run test:visual && npm run test:drive && npm run test:interactions",
+    "test:visual": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/stills.ts",
+    "test:visual:update": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/stills.ts --update && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/drive.ts --update && node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/interactions.ts --update",
+    "test:drive": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/drive.ts",
+    "test:interactions": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/interactions.ts",
+    "test:evidence": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/evidence.ts",
+    "test:gif": "node node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/lib/jiti-cli.mjs test/visual/gif.ts",
     "prepublishOnly": "npm run typecheck && npm run build:broker"
   },
   "pi": {
@@ -45,8 +51,11 @@
     ]
   },
   "devDependencies": {
-    "@earendil-works/pi-tui": ">=0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.84.1",
+    "@earendil-works/pi-tui": "0.84.1",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^22.0.0",
+    "gifenc": "^1.0.3",
     "esbuild": "^0.23.0",
     "typescript": "^5.6.0"
   },
