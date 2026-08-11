@@ -73,6 +73,10 @@ export interface SvgOpts {
   pad?: number;
   bg?: string;
   title?: string;
+  /** Force a fixed grid size (chars × rows) instead of sizing to content — needed
+   *  so every frame of a GIF/animation renders at identical pixel dimensions. */
+  cols?: number;
+  rows?: number;
 }
 
 const FONT = "'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace";
@@ -97,8 +101,10 @@ export function ansiLinesToSvg(lines: string[], opts: SvgOpts = {}): string {
   const pad = opts.pad ?? 14;
   const bg = opts.bg ?? "#0d1117";
   const { inner, cols } = linesToInner(lines, charW, lineH, pad);
-  const width = Math.ceil(cols * charW + pad * 2);
-  const height = Math.ceil(lines.length * lineH + pad * 2);
+  const useCols = opts.cols ?? cols;
+  const useRows = opts.rows ?? lines.length;
+  const width = Math.ceil(useCols * charW + pad * 2);
+  const height = Math.ceil(useRows * lineH + pad * 2);
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}" font-size="${fontSize}" xml:space="preserve">`,
