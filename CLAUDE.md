@@ -79,6 +79,35 @@ with **no re-research**. A **research issue** is read-only (no code) and drain-s
 
 Example: #17 (worktree isolation) → `docs/research/2026-08-10-worktree-isolation.md` → feeds #13.
 
+## Automation notes (drain / any background agent)
+
+Working an issue in an isolated worktree? These are failure modes we've actually hit:
+
+- **`cd <worktree> && npm install`, NEVER `npm --prefix <path> install`.** A fresh worktree has no
+  `node_modules`. But `npm --prefix` run from a *different* cwd makes npm add a bogus self-dependency
+  (`"pi-agentview": "file:…"`) to `package.json` + lock — `cd` into the worktree and run plain
+  `npm install` instead.
+- **Stage only the paths you changed (`git add <paths>`), never `git add -A`.** Multiple agents
+  share this checkout, and a stray install can dirty `package.json` — explicit staging keeps junk
+  out of the PR.
+- **Edit the *worktree* copy of a file, not the shared-checkout path** you may have read from —
+  isolation is path-sensitive.
+- **Rebuild `dist/broker.mjs`** (`npm run build:broker`) if you touched bundled code (see the gotcha
+  above), then re-run `npm test`.
+
+## PR evidence — make the validation VISIBLE
+
+A reviewer must **see** the proof in the PR, not just read "tests passed." For a UI change:
+
+1. After `npm run test:visual:update`, render the new/changed **still(s)** to PNG:
+   `npm run test:evidence -- <fixtureName>` → writes `test/visual/__evidence__/<name>.png` and prints
+   the markdown line.
+2. **Commit the PNG** (it lives in the repo) **and embed it in the PR body** via the printed raw URL
+   (replace `<BRANCH>` with your branch). PNG renders inline on GitHub; the SVG golden stays for
+   diffing. Both, so nothing is "stored somewhere you have to go check out."
+
+Stills only — `test:evidence` can't render the animated driven/interaction flows.
+
 ## Guard rails
 
 - Only touch files you created or modified (multiple agents share this checkout).
