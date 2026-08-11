@@ -61,6 +61,24 @@ no-auth install won't even round-trip `get_state`. The fake covers exactly the p
 broker depends on. If you add a real-pi test, gate it so it SKIPs without credentials — never
 let it make the default suite flaky.
 
+## Research pipeline
+
+Before designing anything non-trivial, gather sourced findings so the decision can be made later
+with **no re-research**. A **research issue** is read-only (no code) and drain-safe:
+
+- Label `research` + `auto`; title `[research] <topic>`. Template: `.github/ISSUE_TEMPLATE/research.md`.
+- `Done when:` = a findings doc at `docs/research/<YYYY-MM-DD>-<topic>.md` that answers the stated
+  questions **with source URLs**, a per-option comparison, what was **ruled out and why**,
+  `[UNVERIFIED]` flags, and a **flagged recommendation** — enough to decide the downstream question
+  without re-searching.
+- **Working it** = run the research (fanning out subagents is fine), write the doc, commit, then
+  **close the issue with a one-line summary + doc link**. It then feeds a `[design-first]` issue.
+- **The rule that makes it reusable:** the output is the *derivation* (sources + reasoning +
+  ruled-outs), never a bare conclusion. A bare answer you can't trace gets re-researched; a sourced
+  one is reviewable weeks later — which is the whole point of doing it async.
+
+Example: #17 (worktree isolation) → `docs/research/2026-08-10-worktree-isolation.md` → feeds #13.
+
 ## Guard rails
 
 - Only touch files you created or modified (multiple agents share this checkout).
