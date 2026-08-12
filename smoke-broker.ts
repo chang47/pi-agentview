@@ -1,7 +1,7 @@
 // Broker smoke test. Run via jiti:  node <jiti-cli.mjs> smoke-broker.ts
 import { createConnection, type Socket } from "node:net";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,7 @@ import { Journal } from "./src/broker/journal.js";
 import { deriveState, initialState } from "./src/broker/state.js";
 import { IpcServer } from "./src/broker/ipc.js";
 import { BrokerSpecStore } from "./src/registry.js";
-import { socketAddress } from "./src/platform/paths.js";
+import { socketAddress, brokerStatePath } from "./src/platform/paths.js";
 import { newNonce } from "./src/platform/pid.js";
 import { PI_CLI_ENV, STATE_DIR_ENV } from "./src/platform/constants.js";
 
@@ -242,6 +242,107 @@ console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny promp
   delete process.env[STATE_DIR_ENV];
 }
 
+// ---------------------------------------------------------------------------
+// PART 4 — G1: a restarted broker rebuilds state from the JSONL journal.
+// Kill the broker hard, DELETE the state-store snapshot (forcing the exact G1
+// failure mode — BrokerStateStore.read -> undefined -> idle/ready, no reply),
+// then restart with a fresh nonce and assert the row keeps its last reply.
+// ---------------------------------------------------------------------------
+console.log("\n[4] Broker restart rebuilds state from JSONL (kill, drop state-store, restart)");
+{
+  const stateTmp = await mkdtemp(join(tmpdir(), "restart-state-"));
+  process.env[STATE_DIR_ENV] = stateTmp;
+  process.env.PI_AGENTVIEW_FAKE_REPLY = "PONG_RESTART";
+
+  const id = "restart-" + Date.now();
+  const tmp = await mkdtemp(join(tmpdir(), "restart-"));
+  const jsonl = join(tmp, "s.jsonl");
+
+  const specStore = new BrokerSpecStore();
+  await specStore.write({
+    id,
+    jsonlPath: jsonl,
+    cwd: tmp,
+    model: "fake/echo",
+    thinkingLevel: "low",
+    initialTask: "Reply with PONG_RESTART",
+    createdAt: Date.now(),
+  });
+
+  // --- v1: run to completion; capture the reply the row must survive. -------
+  const nonce1 = newNonce();
+  const v1 = spawn(process.execPath, [BROKER_MJS, "--id", id, "--nonce", nonce1], {
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  const v1err: string[] = [];
+  v1.stdout?.setEncoding("utf8").on("data", () => {});
+  v1.stderr?.setEncoding("utf8").on("data", (d: string) => v1err.push(d));
+
+  let c = await connectRetry(socketAddress(id), 40, 250);
+  let inbox: any[] = [];
+  pipeInto(c, inbox);
+  c.write(JSON.stringify({ type: "hello", nonce: nonce1, clientId: "fe", lastSeq: 0 }) + "\n");
+
+  const settled1 = await waitFor(
+    () => inbox.some((m) => m.type === "event" && m.event?.type === "agent_settled"),
+    90_000,
+    300,
+  );
+  ok("v1 reached agent_settled", settled1, v1err.join("").slice(0, 300));
+  const latest1 = () => inbox.filter((m) => m.type === "state" || m.type === "snapshot").map((m) => m.state).pop();
+  const completed1 = await waitFor(() => latest1()?.state === "completed", 90_000, 100);
+  ok("v1 final state is completed", completed1, `state=${latest1()?.state}`);
+  ok("v1 captured finalResponse", latest1()?.finalResponse === "PONG_RESTART", `finalResponse=${latest1()?.finalResponse}`);
+
+  // --- kill v1 HARD (no graceful shutdown), then force the G1 failure mode:
+  //     delete the state-store snapshot so the JSONL is the only source left. --
+  c.destroy();
+  v1.kill("SIGKILL");
+  // On Windows a signal kill terminates via TerminateProcess: exitCode stays
+  // null and signalCode is set. Either means the child is dead.
+  const v1Died = await waitFor(() => v1.exitCode !== null || v1.signalCode !== null, 10_000, 100);
+  ok("v1 killed", v1Died, `exitCode=${v1.exitCode} signal=${v1.signalCode}`);
+  await rm(brokerStatePath(id), { force: true });
+  ok("state-store snapshot removed (forces JSONL-only rebuild)", !(await fileExists(brokerStatePath(id))));
+
+  // --- v2: fresh broker + fresh nonce, same id + state dir. Must rebuild. ----
+  const nonce2 = newNonce();
+  const v2 = spawn(process.execPath, [BROKER_MJS, "--id", id, "--nonce", nonce2], {
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  const v2err: string[] = [];
+  v2.stdout?.setEncoding("utf8").on("data", () => {});
+  v2.stderr?.setEncoding("utf8").on("data", (d: string) => v2err.push(d));
+
+  c = await connectRetry(socketAddress(id), 40, 250);
+  inbox = [];
+  pipeInto(c, inbox);
+  c.write(JSON.stringify({ type: "hello", nonce: nonce2, clientId: "fe", lastSeq: 0 }) + "\n");
+  await waitFor(() => inbox.some((m) => m.type === "auth_ok"), 5_000, 100);
+
+  // The rebuilt snapshot is served on connect (getState -> in-memory rebuild).
+  const snap2 = () => inbox.filter((m) => m.type === "snapshot" || m.type === "state").map((m) => m.state).pop();
+  const rebuilt = await waitFor(() => typeof snap2()?.finalResponse === "string", 5_000, 100);
+  const row2 = snap2();
+  ok("v2 rebuilt state from JSONL (completed)", rebuilt && row2?.state === "completed", `state=${row2?.state} err=${v2err.join("").slice(0, 200)}`);
+  ok("v2 kept the last reply from JSONL", row2?.finalResponse === "PONG_RESTART", `finalResponse=${row2?.finalResponse}`);
+
+  // shutdown v2 cleanly
+  c.write(JSON.stringify({ type: "acquire_lease" }) + "\n");
+  await sleep(150);
+  c.write(JSON.stringify({ type: "shutdown" }) + "\n");
+  const v2Exited = await waitFor(() => v2.exitCode !== null, 10_000, 200);
+  ok("v2 shut down cleanly via IPC", v2Exited && v2.exitCode === 0, `exitCode=${v2.exitCode}`);
+
+  c.destroy();
+  await rm(tmp, { recursive: true, force: true });
+  await rm(stateTmp, { recursive: true, force: true }).catch(() => {});
+  delete process.env[STATE_DIR_ENV];
+  delete process.env.PI_AGENTVIEW_FAKE_REPLY;
+}
+
 console.log(`\n${fail === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
 
@@ -289,4 +390,13 @@ async function waitFor(pred: () => boolean, timeoutMs: number, stepMs: number): 
     await sleep(stepMs);
   }
   return pred();
+}
+
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
