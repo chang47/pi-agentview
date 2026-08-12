@@ -59,6 +59,16 @@ const awaiting = row({
 });
 const idle = row({ id: "s4", title: "scratch session", state: "idle", activity: "ready" });
 const attached = row({ id: "fg:1", title: "this terminal", state: "attached", activity: "active", attached: true });
+// A brokered row with an explicit model + thinking level set (what the picker edits).
+const tuned = row({
+  id: "s6",
+  title: "port the renderer",
+  state: "working",
+  activity: "tool: edit",
+  elapsedMs: 9_000,
+  model: "zai/glm-5.2",
+  thinkingLevel: "medium",
+});
 
 const ui = (o: Partial<FrameUi>): FrameUi => ({ ...DEFAULT_UI, ...o });
 
@@ -105,5 +115,27 @@ export const FIXTURES: Fixture[] = [
     // the `s:working` result over the mixed fleet — with the filter line showing.
     rows: [working],
     ui: ui({ selectedId: "s1", filterMode: true, filterQuery: "s:working" }),
+  },
+  {
+    // Selecting a row that has a model/thinking set surfaces them on the row
+    // (the picker, opened with `m`, edits these). No picker open here.
+    name: "model-tag",
+    width: 76,
+    rows: [tuned, idle],
+    ui: ui({ selectedId: "s6" }),
+  },
+  {
+    // Picker open on the thinking list; "high" is highlighted, "medium" is current.
+    name: "picker-thinking",
+    width: 76,
+    rows: [tuned, idle],
+    ui: ui({ selectedId: "s6", pickerOpen: true, pickerField: "thinking", pickerLevelIdx: 4, pickerModelBuf: "zai/glm-5.2" }),
+  },
+  {
+    // Picker with the model field active, mid-typing a new provider/modelId.
+    name: "picker-model",
+    width: 76,
+    rows: [tuned, idle],
+    ui: ui({ selectedId: "s6", pickerOpen: true, pickerField: "model", pickerLevelIdx: 3, pickerModelBuf: "anthropic/claude", pickerFlash: "✓ thinking → high" }),
   },
 ];

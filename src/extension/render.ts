@@ -16,7 +16,17 @@ export interface ManagedRow {
   jsonlPath: string;
   /** True for sessions currently opened in a terminal (display + peek only; no resume/remove). */
   attached?: boolean;
+  /** pi "provider/modelId" the worker is running (reflected on the row + editable
+   *  via the model/thinking picker). Undefined = inherited from the foreground. */
+  model?: string;
+  /** Current thinking level (one of THINKING_LEVELS). Undefined = unknown/default. */
+  thinkingLevel?: string;
 }
+
+/** pi's thinking levels (mirror of @earendil-works/pi-agent-core's ThinkingLevel),
+ *  cheapest first. The model/thinking picker lists these verbatim — they're a
+ *  stable enum, so unlike model ids nothing here can drift or fabricate. */
+export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 
 /** State aliases accepted in a `s:<state>` filter token. */
 const STATE_ALIASES: Record<string, SessionState> = {
@@ -139,6 +149,11 @@ export function rowsFor(
       elapsedMs: since !== undefined ? now - since : undefined,
       needsInput: state === "awaiting_input",
       jsonlPath: e.jsonlPath,
+      // pi reports model/thinking only through get_state *responses*, which the
+      // journal deliberately skips — so the row carries the durable registry
+      // value (updated optimistically by setModel/setThinking).
+      model: e.model,
+      thinkingLevel: e.thinkingLevel,
     };
   });
 }

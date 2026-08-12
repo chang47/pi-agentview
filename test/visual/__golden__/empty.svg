@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="843" height="128" viewBox="0 0 843 128" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" width="910" height="128" viewBox="0 0 910 128" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
 <title>Agent View — empty</title>
-<rect width="843" height="128" fill="#0d1117"/>
+<rect width="910" height="128" fill="#0d1117"/>
 <g dominant-baseline="alphabetic">
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
 <text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
 <text x="14.0" y="69.6" fill="#6e7681">  No background sessions. Press n to create one, Esc to close.</text>
 <text x="14.0" y="89.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="109.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="109.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r/m rename/model · Esc close</text>
 </g>
 </svg>

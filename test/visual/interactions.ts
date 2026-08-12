@@ -133,6 +133,62 @@ ok(
   lastFrame(d4.frames).join("\n"),
 );
 
+// --- Scenario E: model/thinking picker → set_thinking_level + set_model -------
+console.log("[E] model/thinking picker sends set_thinking_level + set_model");
+const tunedRoster = (): ManagedRow[] => [
+  row({ id: "s1", title: "refactor the parser", state: "working", activity: "tool: edit", elapsedMs: 47_000, model: "zai/glm-5.2", thinkingLevel: "medium" }),
+  row({ id: "s2", title: "scratch", state: "idle" }),
+];
+
+// E1: open picker (thinking list, "medium" current) → ↓ to "high" → Enter.
+const e1 = runScenario(tunedRoster(), [
+  { key: "m", label: "m: open picker" },
+  { key: KEY.down, label: "↓: highlight high" },
+  { key: KEY.enter, label: "Enter: apply thinking" },
+]);
+ok(
+  "picker sends set_thinking_level for the highlighted level",
+  e1.calls.some((c) => c.fn === "setThinking" && c.args[0] === "s1" && c.args[1] === "high"),
+  JSON.stringify(e1.calls.filter((c) => c.fn === "setThinking")),
+);
+ok(
+  "the change is reflected on the row (flash + tag)",
+  lastFrame(e1.frames).some((l) => l.includes("✓ thinking → high")) && lastFrame(e1.frames).some((l) => l.includes("zai/glm-5.2")),
+  lastFrame(e1.frames).join("\n"),
+);
+
+// E2: open picker on a row with no model → Tab to model field → type id → Enter.
+const e2 = runScenario(tunedRoster(), [
+  { key: KEY.down, label: "↓: select idle row" },
+  { key: "m", label: "m: open picker" },
+  { key: "\t", label: "Tab: model field" },
+  { text: "anthropic/claude-opus-4-7", label: "type model id" },
+  { key: KEY.enter, label: "Enter: apply model" },
+]);
+ok(
+  "picker sends set_model with the typed provider/modelId",
+  e2.calls.some((c) => c.fn === "setModel" && c.args[0] === "s2" && c.args[1] === "anthropic/claude-opus-4-7"),
+  JSON.stringify(e2.calls.filter((c) => c.fn === "setModel")),
+);
+ok("the new model is reflected on the row", lastFrame(e2.frames).some((l) => l.includes("anthropic/claude-opus-4-7")), lastFrame(e2.frames).join("\n"));
+
+// E3: a provider-less model id is rejected at the apply step (no set_model sent).
+// Use the idle row (no model) so the field starts empty — appending to a seeded
+// "zai/glm-5.2" would otherwise produce a slash-bearing (wrong) id.
+const e3 = runScenario(tunedRoster(), [
+  { key: KEY.down, label: "↓: select idle row" },
+  { key: "m", label: "m: open picker" },
+  { key: "\t", label: "Tab: model field" },
+  { text: "glm-5.2", label: "type id without provider" },
+  { key: KEY.enter, label: "Enter" },
+]);
+ok(
+  "a provider-less model id is NOT applied (row still has no model)",
+  e3.mgr.rows().find((r) => r.id === "s2")?.model === undefined,
+  JSON.stringify(e3.mgr.rows().find((r) => r.id === "s2")),
+);
+ok("the picker shows the format hint", lastFrame(e3.frames).some((l) => l.includes("provider/modelId")), lastFrame(e3.frames).join("\n"));
+
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });
 await mkdir(ARTIFACT_DIR, { recursive: true });

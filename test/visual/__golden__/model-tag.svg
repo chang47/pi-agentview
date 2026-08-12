@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="910" height="208" viewBox="0 0 910 208" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
+<title>Agent View — model-tag</title>
+<rect width="910" height="208" fill="#0d1117"/>
+<g dominant-baseline="alphabetic">
+<text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
+<text x="98.0" y="29.6" fill="#6e7681">   working=1  idle=1</text>
+<text x="14.0" y="49.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="69.6" fill="#56d4dd"> Working (1)</text>
+<text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
+<text x="30.8" y="89.6" fill="#56d4dd">●</text>
+<text x="39.2" y="89.6" fill="#c9d1d9"> port the renderer</text>
+<text x="190.4" y="89.6" fill="#6e7681"> — tool: edit</text>
+<text x="299.6" y="89.6" fill="#6e7681"> 9s</text>
+<text x="14.0" y="109.6" fill="#6e7681">  zai/glm-5.2 · medium</text>
+<text x="14.0" y="129.6" fill="#56d4dd"> Idle (1)</text>
+<text x="14.0" y="149.6" fill="#c9d1d9">  </text>
+<text x="30.8" y="149.6" fill="#6e7681">·</text>
+<text x="39.2" y="149.6" fill="#c9d1d9"> scratch session</text>
+<text x="173.6" y="149.6" fill="#6e7681"> — ready</text>
+<text x="14.0" y="169.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="189.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r/m rename/model · Esc close</text>
+</g>
+</svg>

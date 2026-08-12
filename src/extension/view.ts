@@ -7,7 +7,7 @@
 import { type TUI } from "@earendil-works/pi-tui";
 import { type Theme } from "@earendil-works/pi-coding-agent";
 import type { BrokerManager } from "./controller.js";
-import { groupRows, filterRows, type ManagedRow } from "./render.js";
+import { groupRows, filterRows, THINKING_LEVELS, type ManagedRow } from "./render.js";
 import { renderFrame } from "./frame.js";
 import type { ManagedId } from "../types.js";
 
@@ -34,6 +34,13 @@ export class AgentViewComponent {
   private renameBuf = "";
   private filterMode = false; // true while typing a filter
   private filterQuery = ""; // active filter; empty = show all
+  // Model/thinking picker (opened with `m`). Two sections: a selectable thinking
+  // list and an editable model field; Tab switches the active section.
+  private pickerOpen = false;
+  private pickerField: "thinking" | "model" = "thinking";
+  private pickerLevelIdx = 0;
+  private pickerModelBuf = "";
+  private pickerFlash: string | undefined;
 
   constructor(
     private tui: TUI,
@@ -97,6 +104,11 @@ export class AgentViewComponent {
         renameBuf: this.renameBuf,
         filterMode: this.filterMode,
         filterQuery: this.filterQuery,
+        pickerOpen: this.pickerOpen,
+        pickerField: this.pickerField,
+        pickerLevelIdx: this.pickerLevelIdx,
+        pickerModelBuf: this.pickerModelBuf,
+        pickerFlash: this.pickerFlash,
       },
       (n, s) => this.color(n, s),
     );
@@ -109,6 +121,10 @@ export class AgentViewComponent {
     }
     if (this.renameMode) {
       this.handleRenameInput(data);
+      return;
+    }
+    if (this.pickerOpen) {
+      this.handlePickerInput(data);
       return;
     }
     // Inside the peek panel: typing builds a reply.
@@ -157,6 +173,9 @@ export class AgentViewComponent {
         this.renameBuf = sel?.title ?? "";
         this.tui.requestRender();
       }
+    } else if (data === "m") {
+      // Open the model/thinking picker on the selected background row.
+      if (this.selectedId && !sel?.attached) this.openPicker(sel);
     } else if (data === "/") {
       this.filterMode = true;
       this.tui.requestRender();
@@ -293,6 +312,74 @@ export class AgentViewComponent {
       this.renameBuf += data;
       this.tui.requestRender();
     }
+  }
+
+  /** Open the model/thinking picker on a background row, pre-seeded with that
+   *  row's current values so the user edits in place. */
+  private openPicker(sel: ManagedRow | undefined): void {
+    this.pickerOpen = true;
+    this.pickerField = "thinking";
+    const cur = sel?.thinkingLevel;
+    const idx = cur ? THINKING_LEVELS.findIndex((l) => l === cur) : -1;
+    this.pickerLevelIdx = idx >= 0 ? idx : THINKING_LEVELS.indexOf("medium");
+    this.pickerModelBuf = sel?.model ?? "";
+    this.pickerFlash = undefined;
+    this.tui.requestRender();
+  }
+
+  private handlePickerInput(data: string): void {
+    const sel = this.flatRows().find((r) => r.id === this.selectedId);
+    const id = this.selectedId;
+
+    // Tab switches between the thinking list and the model field.
+    if (data === "\t") {
+      this.pickerField = this.pickerField === "thinking" ? "model" : "thinking";
+      this.pickerFlash = undefined;
+      this.tui.requestRender();
+      return;
+    }
+    if (data === "\x1b") {
+      // Esc steps back model → thinking first, then closes (mirrors rename/peek).
+      if (this.pickerField === "model") this.pickerField = "thinking";
+      else {
+        this.pickerOpen = false;
+        this.pickerFlash = undefined;
+      }
+      this.tui.requestRender();
+      return;
+    }
+
+    if (this.pickerField === "thinking") {
+      const n = THINKING_LEVELS.length;
+      if (data === UP || data === "k") {
+        this.pickerLevelIdx = (this.pickerLevelIdx - 1 + n) % n;
+        this.pickerFlash = undefined;
+      } else if (data === DOWN || data === "j") {
+        this.pickerLevelIdx = (this.pickerLevelIdx + 1) % n;
+        this.pickerFlash = undefined;
+      } else if (data === "\r" || data === "\n") {
+        const level = THINKING_LEVELS[this.pickerLevelIdx]!;
+        if (id && this.mgr.setThinking(id, level)) this.pickerFlash = `✓ thinking → ${level}`;
+        else this.pickerFlash = "✗ no live broker — change not sent";
+      }
+      this.tui.requestRender();
+      return;
+    }
+
+    // model field
+    if (data === BACKSPACE || data === BACKSPACE_ALT) {
+      this.pickerModelBuf = this.pickerModelBuf.slice(0, -1);
+      this.pickerFlash = undefined;
+    } else if (data === "\r" || data === "\n") {
+      const model = this.pickerModelBuf.trim();
+      if (id && model && this.mgr.setModel(id, model)) this.pickerFlash = `✓ model → ${model}`;
+      else if (!model) this.pickerFlash = "✗ type provider/modelId";
+      else this.pickerFlash = "✗ model needs provider/modelId (e.g. anthropic/claude-opus-4-7)";
+    } else if (data.length >= 1 && data.charCodeAt(0) >= 32 && !data.startsWith("\x1b")) {
+      this.pickerModelBuf += data;
+      this.pickerFlash = undefined;
+    }
+    this.tui.requestRender();
   }
 
   invalidate(): void {
