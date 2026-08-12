@@ -63,7 +63,7 @@ function frame(state: BrokerState, ui: Partial<FrameUi>): string[] {
 // The exact events the fake pi emits on a prompt (scenario "ok", with a tool step).
 const events: RpcMessage[] = [
   { type: "agent_start" },
-  { type: "tool_execution_start", toolName: "edit" },
+  { type: "tool_execution_start", toolName: "edit", args: { file_path: "src/tokenizer.ts" } },
   {
     type: "message_end",
     message: { role: "assistant", content: [{ type: "text", text: "Done — split the tokenizer out; all 42 tests pass." }] },

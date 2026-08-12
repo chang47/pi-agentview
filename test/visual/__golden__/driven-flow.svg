@@ -35,8 +35,8 @@
 <text x="14.0" y="89.6" fill="#56d4dd">▸ </text>
 <text x="30.8" y="89.6" fill="#56d4dd">●</text>
 <text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
-<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit</text>
-<text x="316.4" y="89.6" fill="#6e7681"> 3s</text>
+<text x="207.2" y="89.6" fill="#6e7681"> — tool: edit src/tokenizer.ts</text>
+<text x="459.2" y="89.6" fill="#6e7681"> 3s</text>
 <text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
 <text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
 </g>

@@ -533,6 +533,38 @@ function summarize(text) {
   const oneLine = text.replace(/\s+/g, " ").trim();
   return oneLine.length > 120 ? oneLine.slice(0, 117) + "\u2026" : oneLine;
 }
+var TOOL_TARGET_KEYS = [
+  "file_path",
+  "filePath",
+  "path",
+  "file",
+  "command",
+  "cmd",
+  "pattern",
+  "query",
+  "url",
+  "name"
+];
+function firstString(...vals) {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return void 0;
+}
+function toolTarget(ev) {
+  const args = ev.args ?? ev.arguments ?? ev.input;
+  const raw = firstString(ev.target) ?? (args && typeof args === "object" ? firstString(...TOOL_TARGET_KEYS.map((k) => args[k])) : void 0);
+  if (!raw) return void 0;
+  const oneLine = raw.replace(/\s+/g, " ").trim();
+  return oneLine.length > 48 ? oneLine.slice(0, 47) + "\u2026" : oneLine;
+}
+function toolActivity(name, target) {
+  return target ? `tool: ${name} ${target}` : `tool: ${name}`;
+}
+function toolNameFromActivity(activity) {
+  const m = /^tool:\s+(\S+)/.exec(activity);
+  return m ? m[1] : void 0;
+}
 function deriveState(prev, ev, seq) {
   const now = Date.now();
   const base = { ...prev, lastEventSeq: seq, updatedAt: now };
@@ -542,7 +574,13 @@ function deriveState(prev, ev, seq) {
       return { ...base, state: "working", activity: "running", runStartedAt: now, completedAt: void 0, pendingDialog: void 0 };
     case "tool_execution_start": {
       const name = String(ev.toolName ?? "tool");
-      return { ...base, state: ensureWorking(base.state), activity: `tool: ${name}` };
+      return { ...base, state: ensureWorking(base.state), activity: toolActivity(name, toolTarget(ev)) };
+    }
+    case "tool_execution_update": {
+      const target = toolTarget(ev);
+      if (ev.toolName === void 0 && target === void 0) return { ...base };
+      const name = ev.toolName !== void 0 ? String(ev.toolName) : toolNameFromActivity(base.activity) ?? "tool";
+      return { ...base, state: ensureWorking(base.state), activity: toolActivity(name, target) };
     }
     case "compaction_start":
       return { ...base, state: ensureWorking(base.state), activity: "compacting context" };
