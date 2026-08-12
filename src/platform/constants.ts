@@ -41,6 +41,11 @@ export const RELEASE_POLL_MS = 100;
 /** Broker self-reap: how often it checks that its durable spec still exists. */
 export const SPEC_WATCH_MS = 30_000;
 
+/** How often the broker polls pi's get_session_stats for tokens / cost / context.
+ *  Pi reports cumulative session totals, so a slow poll is enough — these are
+ *  glanceable numbers, not a live counter, and each change re-broadcasts state. */
+export const STATS_POLL_MS = 5_000;
+
 /** Shown when nothing better is derivable yet. Treated as "no title": it must
  *  never displace a real one the user gave us. */
 export const PLACEHOLDER_TITLE = "session";

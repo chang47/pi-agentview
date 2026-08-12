@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { PiRpcClient } from "./src/broker/rpc-client.js";
 import { Journal } from "./src/broker/journal.js";
-import { deriveState, initialState } from "./src/broker/state.js";
+import { deriveState, initialState, parseSessionStats } from "./src/broker/state.js";
 import { IpcServer } from "./src/broker/ipc.js";
 import { BrokerSpecStore } from "./src/registry.js";
 import { socketAddress } from "./src/platform/paths.js";
@@ -53,6 +53,10 @@ console.log("\n[1] PiRpcClient real (spawn pi --mode rpc, get_state)");
   ok("get_state responded", resp.type === "response" && resp.command === "get_state", JSON.stringify(resp).slice(0, 120));
   const data = resp.data as { sessionFile?: string; sessionId?: string } | undefined;
   ok("response has sessionFile", typeof data?.sessionFile === "string");
+  const statsResp = await rpc.send({ type: "get_session_stats" });
+  ok("get_session_stats responded", statsResp.type === "response" && statsResp.command === "get_session_stats", JSON.stringify(statsResp).slice(0, 120));
+  const parsed = parseSessionStats(statsResp);
+  ok("get_session_stats parses to tokens/cost/ctx", parsed?.tokens === 12834 && parsed?.costUsd === 0.0421 && parsed?.contextPct === 42, JSON.stringify(parsed));
   await rpc.stop();
   await rm(tmp, { recursive: true, force: true });
 }
@@ -109,6 +113,16 @@ console.log("\n[2b] deriveState transitions");
   st = deriveState(st, { type: "extension_ui_request", id: "d1", method: "confirm", title: "Allow rm -rf?" }, 5) ?? st;
   ok("dialog -> awaiting_input", st.state === "awaiting_input", `state=${st.state}`);
   ok("pendingDialog captured", st.pendingDialog?.id === "d1" && st.pendingDialog?.method === "confirm");
+  // get_session_stats parsing is defensive over key aliases
+  {
+    const ss = parseSessionStats({ type: "response", data: { totalTokens: 12834, costUsd: 0.0421, contextPct: 42 } });
+    ok("parseSessionStats reads totalTokens/cost/ctx", ss?.tokens === 12834 && ss?.costUsd === 0.0421 && ss?.contextPct === 42, JSON.stringify(ss));
+    const io = parseSessionStats({ type: "response", data: { inputTokens: 1000, outputTokens: 234 } });
+    ok("parseSessionStats sums input+output when no total", io?.tokens === 1234, JSON.stringify(io));
+    const snake = parseSessionStats({ type: "response", data: { total_tokens: 5, cost_usd: 0.01, context_pct: 9 } });
+    ok("parseSessionStats accepts snake_case keys", snake?.tokens === 5 && snake?.costUsd === 0.01 && snake?.contextPct === 9, JSON.stringify(snake));
+    ok("parseSessionStats undefined on empty response", parseSessionStats({ type: "response" }) === undefined);
+  }
 }
 
 console.log("\n[2c] IpcServer auth + snapshot + broadcast + lease");
@@ -227,6 +241,11 @@ console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny promp
   ok("final state is completed", sawCompleted, `state=${latestState()?.state}`);
   const finalState = latestState();
   ok("finalResponse captured", typeof finalState?.finalResponse === "string" && finalState.finalResponse.length > 0, `finalResponse=${finalState?.finalResponse}`);
+
+  // The broker polls get_session_stats on a tick and merges it onto BrokerState;
+  // it reaches this client as a state/snapshot broadcast.
+  const sawStats = await waitFor(() => typeof latestState()?.stats?.tokens === "number", 90_000, 200);
+  ok("broker surfaces get_session_stats on state", sawStats, `stats=${JSON.stringify(latestState()?.stats)}`);
 
   // shutdown via IPC
   c.write(JSON.stringify({ type: "acquire_lease" }) + "\n");

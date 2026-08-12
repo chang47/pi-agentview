@@ -7,13 +7,13 @@
 import { PiRpcClient, type RpcMessage } from "./rpc-client.js";
 import { Journal } from "./journal.js";
 import { IpcServer } from "./ipc.js";
-import { deriveState, initialState } from "./state.js";
+import { deriveState, initialState, parseSessionStats } from "./state.js";
 import { acquireLock, readLock, releaseLock } from "./lock.js";
 import { BrokerSpecStore, BrokerStateStore } from "../registry.js";
 import { brokerLockPath, journalPath, socketAddress } from "../platform/paths.js";
 import { isAlive } from "../platform/pid.js";
-import { SPEC_WATCH_MS } from "../platform/constants.js";
-import type { BrokerState } from "../types.js";
+import { SPEC_WATCH_MS, STATS_POLL_MS } from "../platform/constants.js";
+import type { BrokerState, SessionStats } from "../types.js";
 
 export interface BrokerArgs {
   id: string;
@@ -158,6 +158,7 @@ export async function runBroker(rawArgv: string[]): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
     clearInterval(specWatch);
+    clearInterval(statsWatch);
     try {
       await rpc.stop();
     } catch {
@@ -180,6 +181,36 @@ export async function runBroker(rawArgv: string[]): Promise<void> {
   }, SPEC_WATCH_MS);
   specWatch.unref?.();
 
+  // --- periodic usage stats (tokens / cost / context%) --------------------
+  // Polled from pi's get_session_stats and merged onto BrokerState; the view
+  // renders them per row. Fire-and-forget on a tick. A failed or unsupported
+  // fetch leaves the last-known stats untouched rather than zeroing them, and an
+  // in-flight guard keeps a slow (30s-timeout) unsupported command from piling up
+  // overlapping requests.
+  let statsInFlight = false;
+  const pollStats = async (): Promise<void> => {
+    if (shuttingDown || statsInFlight || !rpc.isAlive) return;
+    statsInFlight = true;
+    try {
+      const resp = await rpc.send({ type: "get_session_stats" });
+      const next = parseSessionStats(resp);
+      // Re-broadcast only when the numbers moved — a stable session would
+      // otherwise re-flush state + disk on every tick.
+      if (next && !sameStats(state.stats, next)) await persistState({ ...state, stats: next });
+    } catch {
+      /* worker gone or command unsupported — keep last-known stats */
+    } finally {
+      statsInFlight = false;
+    }
+  };
+  const statsWatch = setInterval(() => void pollStats(), STATS_POLL_MS);
+  statsWatch.unref?.();
+  void pollStats(); // don't make the first row wait a full tick for stats
+
   process.on("SIGTERM", () => void shutdown());
   process.on("SIGINT", () => void shutdown());
+}
+
+function sameStats(a: SessionStats | undefined, b: SessionStats): boolean {
+  return a !== undefined && a.tokens === b.tokens && a.costUsd === b.costUsd && a.contextPct === b.contextPct;
 }

@@ -59,6 +59,16 @@ const awaiting = row({
 });
 const idle = row({ id: "s4", title: "scratch session", state: "idle", activity: "ready" });
 const attached = row({ id: "fg:1", title: "this terminal", state: "attached", activity: "active", attached: true });
+// A row carrying get_session_stats usage (tokens / cost / context%) — the
+// per-session differentiator rendered at the right edge of the row.
+const withStats = row({
+  id: "s6",
+  title: "long-running research sweep",
+  state: "working",
+  activity: "tool: grep src/",
+  elapsedMs: 184_000,
+  stats: { tokens: 12834, costUsd: 0.0421, contextPct: 42 },
+});
 
 const ui = (o: Partial<FrameUi>): FrameUi => ({ ...DEFAULT_UI, ...o });
 
@@ -67,6 +77,9 @@ export const FIXTURES: Fixture[] = [
   { name: "single-working", width: 76, rows: [working], ui: ui({ selectedId: "s1" }) },
   { name: "mid-tool", width: 76, rows: [midTool], ui: ui({ selectedId: "s5", peekOpen: true }) },
   { name: "single-completed", width: 76, rows: [completed], ui: ui({ selectedId: "s2" }) },
+  // A working row carrying usage stats next to a completed row with none — shows
+  // both "stats present" (right edge: 12.8k·$0.0421·42%) and "absent" rendering.
+  { name: "stats", width: 76, rows: [withStats, completed], ui: ui({ selectedId: "s6" }) },
   { name: "mixed-fleet", width: 76, rows: [awaiting, attached, working, completed, idle], ui: ui({ selectedId: "s1" }) },
   {
     name: "peek-reply-typed",
