@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { BrokerManager, resolveTitle } from "./src/extension/controller.js";
+import { BrokerManager, resolveTitle, parseModelId } from "./src/extension/controller.js";
 import { rowsFor, groupRows, formatElapsed, statusGlyph, stateLabel } from "./src/extension/render.js";
 import { BrokerSpecStore } from "./src/registry.js";
 import { brokerSpecPath, sessionDir, sessionsDir } from "./src/platform/paths.js";
@@ -53,6 +53,30 @@ ok("stateLabel awaiting_input", stateLabel("awaiting_input") === "Awaiting Input
   ok("groups ordered by urgency (awaiting first)", groups[0]?.state === "awaiting_input", groups[0]?.state);
   ok("then working, then completed", groups[1]?.state === "working" && groups[2]?.state === "completed");
   ok("working row elapsed from runStartedAt", rows.find((r) => r.id === "b")?.elapsedMs === 5_000);
+}
+
+// --- set_model id parsing (pure) ------------------------------------------
+// set_model needs {provider, modelId}; the manager parses pi's "provider/modelId"
+// form. A malformed id must yield undefined so setModel sends no RPC (pi would NACK).
+console.log("\n[set_model parsing]");
+ok(
+  "splits provider/modelId",
+  parseModelId("anthropic/claude-opus-4-7")!.provider === "anthropic" && parseModelId("anthropic/claude-opus-4-7")!.modelId === "claude-opus-4-7",
+);
+ok("splits zai/glm-5.2", parseModelId("zai/glm-5.2")!.provider === "zai" && parseModelId("zai/glm-5.2")!.modelId === "glm-5.2");
+ok("rejects a bare model id (no provider)", parseModelId("glm-5.2") === undefined);
+ok("rejects an empty provider", parseModelId("/glm-5.2") === undefined);
+ok("rejects an empty model id", parseModelId("zai/") === undefined);
+ok("rejects whitespace-only", parseModelId("   ") === undefined);
+ok("trims surrounding whitespace", parseModelId("  anthropic/claude  ")!.provider === "anthropic");
+
+// rowsFor must carry model/thinkingLevel onto the row so the picker + tag render.
+{
+  const entries: RegistryEntry[] = [
+    { id: "t", title: "T", jsonlPath: "/t", cwd: "/", createdAt: 0, specPath: "", socketAddress: "", model: "zai/glm-5.2", thinkingLevel: "high" },
+  ];
+  const r = rowsFor(entries, new Map(), 0);
+  ok("row reflects model + thinkingLevel", r[0]?.model === "zai/glm-5.2" && r[0]?.thinkingLevel === "high", JSON.stringify(r[0]));
 }
 
 // --- BrokerManager create -> rows -> remove (real brokers, no model) -------

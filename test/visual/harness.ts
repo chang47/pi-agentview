@@ -5,6 +5,7 @@
 // then inspect the frames and the call log — no real broker, no model.
 
 import { AgentViewComponent, type ViewResult } from "../../src/extension/view.js";
+import { parseModelId } from "../../src/extension/controller.js";
 import type { BrokerManager } from "../../src/extension/controller.js";
 import type { ManagedRow } from "../../src/extension/render.js";
 import type { ManagedId } from "../../src/types.js";
@@ -23,7 +24,7 @@ export const KEY = {
 } as const;
 
 export interface Call {
-  fn: "remove" | "sendReply" | "setTitle" | "tick";
+  fn: "remove" | "sendReply" | "setTitle" | "setThinking" | "setModel" | "tick";
   args: unknown[];
 }
 
@@ -32,6 +33,8 @@ export interface Call {
 export class MockManager {
   private roster: ManagedRow[];
   replyOk = true;
+  /** When false, setThinking/setModel report "no live broker" (returns false). */
+  optionsOk = true;
   calls: Call[] = [];
 
   constructor(rows: ManagedRow[]) {
@@ -58,6 +61,22 @@ export class MockManager {
     this.calls.push({ fn: "setTitle", args: [id, text] });
     const r = this.roster.find((x) => x.id === id);
     if (r) r.title = text;
+  }
+  setThinking(id: ManagedId, level: string): boolean {
+    this.calls.push({ fn: "setThinking", args: [id, level] });
+    if (!this.optionsOk) return false;
+    const r = this.roster.find((x) => x.id === id);
+    if (r) r.thinkingLevel = level; // reflect the change on the row, like the real manager
+    return true;
+  }
+  setModel(id: ManagedId, model: string): boolean {
+    this.calls.push({ fn: "setModel", args: [id, model] });
+    // Mirror the real manager: a malformed id (no provider/modelId) sends no RPC
+    // and returns false — so the view shows the format hint, and the row is unchanged.
+    if (!this.optionsOk || !parseModelId(model)) return false;
+    const r = this.roster.find((x) => x.id === id);
+    if (r) r.model = model;
+    return true;
   }
 }
 

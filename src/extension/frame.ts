@@ -4,7 +4,7 @@
 // directly from fixtures (see test/visual) to snapshot every screen state.
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
-import { groupRows, statusGlyph, formatElapsed, type ManagedRow } from "./render.js";
+import { groupRows, statusGlyph, formatElapsed, THINKING_LEVELS, type ManagedRow } from "./render.js";
 import type { ManagedId } from "../types.js";
 
 /** UI-local state the frame needs that isn't part of a row. */
@@ -21,6 +21,16 @@ export interface FrameUi {
   /** The active filter query (rows are pre-filtered by the caller; this only
    *  drives the filter line + the "no matches" message). */
   filterQuery?: string;
+  /** Model/thinking picker open on the selected row. */
+  pickerOpen?: boolean;
+  /** Which picker section is active (drives the cursor + highlight). */
+  pickerField?: "thinking" | "model";
+  /** Highlighted index into THINKING_LEVELS (thinking section). */
+  pickerLevelIdx?: number;
+  /** Text being typed into the model field (provider/modelId). */
+  pickerModelBuf?: string;
+  /** Brief confirmation line after an apply (e.g. "thinking set to high"). */
+  pickerFlash?: string;
 }
 
 /** Wraps `s` in a theme color by semantic name (accent/muted/success/…). The
@@ -112,6 +122,18 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
         else lines.push(promptLabel + buf);
         if (ui.sendError) lines.push(color("error", "  ✗ " + truncateToWidth(ui.sendError, Math.max(2, width - 4), "…")));
       }
+
+      // The selected row surfaces its current model/thinking (the picker edits
+      // these). One muted line; only when the row actually has a value, so rows
+      // that inherit the foreground default stay single-line.
+      if (sel && !ui.peekOpen && (row.model || row.thinkingLevel)) {
+        const tag = [row.model, row.thinkingLevel].filter(Boolean).join(" · ");
+        lines.push(color("muted", "  " + truncateToWidth(tag, Math.max(2, width - 2), "…")));
+      }
+
+      if (sel && ui.pickerOpen) {
+        lines.push(...pickerPanel(row, ui, width, color));
+      }
     }
   }
 
@@ -124,11 +146,49 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
     ? " type to filter · s:working / s:blocked · Enter apply · Esc clear"
     : ui.renameMode
       ? " type new title · Enter save · Esc cancel"
+      : ui.pickerOpen
+        ? ui.pickerField === "model"
+          ? " type provider/modelId · Tab thinking · Enter apply · Esc back"
+          : " ↑↓ pick thinking · Tab model · Enter apply · Esc close"
       : ui.peekOpen
         ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
         : selAttached
           ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
+          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r/m rename/model · Esc close";
   lines.push(color("muted", hint));
   return lines;
+}
+
+/** Render the model/thinking picker panel under the selected row. Two sections:
+ *  a selectable thinking-level list, and an editable model field (provider/modelId).
+ *  Tab (handled in the view) switches the active section; the cursor + highlight
+ *  follow `ui.pickerField`. */
+function pickerPanel(row: ManagedRow, ui: FrameUi, width: number, color: ColorFn): string[] {
+  const field = ui.pickerField ?? "thinking";
+  const levelIdx = ui.pickerLevelIdx ?? 0;
+  const modelBuf = ui.pickerModelBuf ?? "";
+  const out: string[] = [];
+  const header = `model/thinking ▸ ${row.model ?? "default"} · ${row.thinkingLevel ?? "—"}`;
+  out.push(color("accent", "  " + truncateToWidth(header, Math.max(2, width - 2), "…")));
+
+  out.push(color("muted", "  thinking"));
+  for (let i = 0; i < THINKING_LEVELS.length; i++) {
+    const lvl = THINKING_LEVELS[i]!;
+    const highlighted = field === "thinking" && i === levelIdx;
+    const current = lvl === row.thinkingLevel;
+    const marker = highlighted ? "▸" : current ? "●" : " ";
+    const body = `${marker} ${lvl}${current && !highlighted ? " (current)" : ""}`;
+    out.push((highlighted ? color("accent", "  " + body) : color("muted", "  " + body)));
+  }
+
+  out.push(color("muted", "  model"));
+  const modelMarker = field === "model" ? "▸ " : "  ";
+  const modelCur = field === "model" ? `${modelBuf}█` : (modelBuf || row.model || "default");
+  out.push(color(field === "model" ? "accent" : "muted", "  " + modelMarker + truncateToWidth(modelCur, Math.max(1, width - 4), "")));
+
+  if (ui.pickerFlash) {
+    const ok2 = !ui.pickerFlash.startsWith("✗");
+    out.push(color(ok2 ? "success" : "error", "  " + truncateToWidth(ui.pickerFlash, Math.max(2, width - 2), "…")));
+  }
+  return out;
 }

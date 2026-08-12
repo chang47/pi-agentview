@@ -323,6 +323,48 @@ export class BrokerManager {
     return true;
   }
 
+  /** Change a background session's thinking level on the LIVE worker (and the
+   *  durable spec, so a broker restart keeps it). Returns false when there is no
+   *  live broker to command — the view surfaces that rather than flashing "applied"
+   *  for a change that went nowhere (same contract as sendReply). */
+  setThinking(id: ManagedId, level: string): boolean {
+    if (id.startsWith("fg:")) return false;
+    const ms = this.sessions.get(id);
+    if (!ms?.client) return false;
+    ms.client.sendRpc({ type: "set_thinking_level", level });
+    void this.persistOption(id, { thinkingLevel: level });
+    return true;
+  }
+
+  /** Change a background session's model on the live worker + durable spec.
+   *  Accepts pi's "provider/modelId" form (the same string create() and the CLI
+   *  take) and splits it into the two fields pi's set_model RPC requires. Returns
+   *  false for a malformed id or a session with no live broker. */
+  setModel(id: ManagedId, model: string): boolean {
+    if (id.startsWith("fg:")) return false;
+    const parsed = parseModelId(model);
+    if (!parsed) return false;
+    const ms = this.sessions.get(id);
+    if (!ms?.client) return false;
+    ms.client.sendRpc({ type: "set_model", ...parsed });
+    void this.persistOption(id, { model });
+    return true;
+  }
+
+  /** Write a model/thinking change into the registry row + durable spec + live
+   *  entry cache so it survives a broker restart and shows on the row immediately.
+   *  (pi surfaces model/thinking only via get_state responses, which the journal
+   *  skips — so the registry is the source of truth for the display value.) */
+  private async persistOption(id: ManagedId, patch: { model?: string; thinkingLevel?: string }): Promise<void> {
+    const e = await this.registry.get(id);
+    if (e) await this.registry.upsert({ ...e, ...patch });
+    const spec = await this.specs.read(id);
+    if (spec) await this.specs.write({ ...spec, ...patch });
+    const ms = this.sessions.get(id);
+    if (ms) ms.entry = { ...ms.entry, ...patch };
+    this.touch();
+  }
+
   async create(opts: CreateOptions): Promise<ManagedId> {
     const id = `s-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     // The JSONL lives in THIS session's own dir unless the caller names a path.
@@ -536,6 +578,16 @@ export class BrokerManager {
 
 function emptyState(id: ManagedId): BrokerState {
   return { id, state: "idle", activity: "ready", lastEventSeq: 0, updatedAt: Date.now() };
+}
+
+/** Split pi's "provider/modelId" form into the two fields set_model needs.
+ *  Returns undefined unless BOTH sides are non-empty (e.g. "glm-5.2" with no
+ *  provider, or "/x", or "x/", are rejected — the RPC would NACK anyway). */
+export function parseModelId(model: string): { provider: string; modelId: string } | undefined {
+  const trimmed = model.trim();
+  const slash = trimmed.indexOf("/");
+  if (slash <= 0 || slash >= trimmed.length - 1) return undefined;
+  return { provider: trimmed.slice(0, slash), modelId: trimmed.slice(slash + 1) };
 }
 
 /**
