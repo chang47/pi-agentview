@@ -33,6 +33,15 @@ function row(p: Partial<ManagedRow> & Pick<ManagedRow, "id" | "title" | "state">
 }
 
 const working = row({ id: "s1", title: "refactor the parser", state: "working", activity: "tool: edit", elapsedMs: 47_000 });
+// A live tool row: the current tool AND its target, surfaced from
+// tool_execution_start/update events (deriveState composes "tool: <name> <target>").
+const midTool = row({
+  id: "s5",
+  title: "port the auth module",
+  state: "working",
+  activity: "tool: edit src/auth/session.ts",
+  elapsedMs: 8_000,
+});
 const completed = row({
   id: "s2",
   title: "fix the flaky uploader test",
@@ -56,6 +65,7 @@ const ui = (o: Partial<FrameUi>): FrameUi => ({ ...DEFAULT_UI, ...o });
 export const FIXTURES: Fixture[] = [
   { name: "empty", width: 76, rows: [], ui: DEFAULT_UI },
   { name: "single-working", width: 76, rows: [working], ui: ui({ selectedId: "s1" }) },
+  { name: "mid-tool", width: 76, rows: [midTool], ui: ui({ selectedId: "s5", peekOpen: true }) },
   { name: "single-completed", width: 76, rows: [completed], ui: ui({ selectedId: "s2" }) },
   { name: "mixed-fleet", width: 76, rows: [awaiting, attached, working, completed, idle], ui: ui({ selectedId: "s1" }) },
   {
@@ -87,5 +97,13 @@ export const FIXTURES: Fixture[] = [
     width: 76,
     rows: [awaiting, working],
     ui: ui({ selectedId: "s3", peekOpen: true }),
+  },
+  {
+    name: "filter-active",
+    width: 76,
+    // Rows are pre-filtered (the component filters before renderFrame); this is
+    // the `s:working` result over the mixed fleet — with the filter line showing.
+    rows: [working],
+    ui: ui({ selectedId: "s1", filterMode: true, filterQuery: "s:working" }),
   },
 ];

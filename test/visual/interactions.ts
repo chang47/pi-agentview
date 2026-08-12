@@ -103,51 +103,86 @@ const c = runScenario(attachedRoster, [{ key: KEY.enter, label: "Enter on attach
 ok("Enter on an attached row does NOT resume", !c.done.some((r) => r?.action === "resume"), JSON.stringify(c.done));
 ok("d on an attached row does NOT remove", !c.calls.some((x) => x.fn === "remove"), JSON.stringify(c.calls));
 
-// --- Scenario D: replying to an ATTACHED row is refused, with its own reason --
+// --- Scenario D: filter narrows the list; state filter; no-match; Esc clears --
+console.log("[D] filter narrows the list, then clears");
+const filterRoster: ManagedRow[] = [
+  row({ id: "s1", title: "refactor the parser", state: "working", activity: "tool: edit", elapsedMs: 47_000 }),
+  row({ id: "s2", title: "fix the flaky uploader test", state: "completed", activity: "responded", reply: "done", elapsedMs: 5_000 }),
+  row({ id: "s3", title: "add retry to the uploader", state: "working", activity: "running", elapsedMs: 12_000 }),
+];
+const has = (frames: string[][], s: string): boolean => lastFrame(frames).some((l) => l.includes(s));
+
+const d1 = runScenario(filterRoster, [{ key: "/" }, { text: "uploader" }]);
+ok(
+  "free-text filter shows only matching rows",
+  has(d1.frames, "uploader test") && has(d1.frames, "add retry") && !has(d1.frames, "refactor the parser"),
+  lastFrame(d1.frames).join("\n"),
+);
+const d2 = runScenario(filterRoster, [{ key: "/" }, { text: "s:working" }]);
+ok(
+  "s:working shows only working rows",
+  has(d2.frames, "refactor the parser") && has(d2.frames, "add retry") && !has(d2.frames, "uploader test"),
+  lastFrame(d2.frames).join("\n"),
+);
+const d3 = runScenario(filterRoster, [{ key: "/" }, { text: "zzz" }]);
+ok("a non-matching filter shows the 'no match' line", has(d3.frames, "No sessions match"), lastFrame(d3.frames).join("\n"));
+const d4 = runScenario(filterRoster, [{ key: "/" }, { text: "uploader" }, { key: KEY.esc }]);
+ok(
+  "Esc clears the filter (all rows return)",
+  has(d4.frames, "refactor the parser") && has(d4.frames, "uploader test") && has(d4.frames, "add retry"),
+  lastFrame(d4.frames).join("\n"),
+);
+
+// --- Scenario E: replying to an ATTACHED row is refused, with its own reason --
 // Scenario C covers Enter/d on an attached row. Sending it a reply is a separate
 // branch: the view picks the error text off the `fg:` prefix, so a background
 // broker being down and a session being attached must not read the same.
-console.log("[D] reply to an attached row → attach-specific refusal");
-const d = runScenario(attachedRoster, [{ key: KEY.space }, { text: "you there?" }, { key: KEY.enter }]);
-ok("sendReply was attempted against the attached row", d.calls.some((c) => c.fn === "sendReply" && c.args[0] === "fg:1"), JSON.stringify(d.calls));
+console.log("[E] reply to an attached row → attach-specific refusal");
+const attachedReply = runScenario(attachedRoster, [{ key: KEY.space }, { text: "you there?" }, { key: KEY.enter }]);
+ok(
+  "sendReply was attempted against the attached row",
+  attachedReply.calls.some((c) => c.fn === "sendReply" && c.args[0] === "fg:1"),
+  JSON.stringify(attachedReply.calls),
+);
 ok(
   "peek shows the attach-specific refusal, not the broker-down text",
-  lastFrame(d.frames).some((ln) => ln.includes("attached in a terminal")) && !lastFrame(d.frames).some((ln) => ln.includes("no live broker")),
-  lastFrame(d.frames).join("\n"),
+  has(attachedReply.frames, "attached in a terminal") && !has(attachedReply.frames, "no live broker"),
+  lastFrame(attachedReply.frames).join("\n"),
 );
-ok("attached refusal shows no 'sent ✓'", !lastFrame(d.frames).some((ln) => ln.includes("sent ✓")), lastFrame(d.frames).join("\n"));
+ok("attached refusal shows no 'sent ✓'", !has(attachedReply.frames, "sent ✓"), lastFrame(attachedReply.frames).join("\n"));
 
-// --- Scenario E: a failed send keeps the draft, and the error is dismissable --
+// --- Scenario F: a failed send keeps the draft, and the error is dismissable --
 // Losing the text you just typed because delivery failed would be its own bug:
 // the reply is unrecoverable and has to be retyped from memory.
-console.log("[E] failed send preserves the draft; next keystroke clears the error");
-const e = runScenario(
+console.log("[F] failed send preserves the draft; next keystroke clears the error");
+const failedSend = runScenario(
   roster(),
   [{ key: KEY.down }, { key: KEY.space }, { text: "hello?" }, { key: KEY.enter }, { key: "x", label: "type after failure" }],
   { replyOk: false },
 );
-const eAfterFail = e.frames[4];
-ok("failed send keeps the typed draft", eAfterFail.some((ln) => ln.includes("hello?")), eAfterFail.join("\n"));
-ok("the next keystroke dismisses the error banner", !lastFrame(e.frames).some((ln) => ln.includes("no live broker")), lastFrame(e.frames).join("\n"));
-ok("and that keystroke extends the draft", lastFrame(e.frames).some((ln) => ln.includes("hello?x")), lastFrame(e.frames).join("\n"));
+// frames[4] is the frame right after Enter, before the recovery keystroke.
+const afterFailure = failedSend.frames[4];
+ok("failed send keeps the typed draft", afterFailure.some((ln) => ln.includes("hello?")), afterFailure.join("\n"));
+ok("the next keystroke dismisses the error banner", !has(failedSend.frames, "no live broker"), lastFrame(failedSend.frames).join("\n"));
+ok("and that keystroke extends the draft", has(failedSend.frames, "hello?x"), lastFrame(failedSend.frames).join("\n"));
 
-// --- Scenario F: a delivered reply clears the box and flashes 'sent ✓' --------
-console.log("[F] delivered reply clears the input");
-const f = runScenario(roster(), [{ key: KEY.down }, { key: KEY.space }, { text: "ship it" }, { key: KEY.enter }]);
-ok("delivered reply flashes 'sent ✓'", lastFrame(f.frames).some((ln) => ln.includes("sent ✓")), lastFrame(f.frames).join("\n"));
-ok("delivered reply clears the input box", !lastFrame(f.frames).some((ln) => ln.includes("reply ▸ ship it")), lastFrame(f.frames).join("\n"));
+// --- Scenario G: a delivered reply clears the box and flashes 'sent ✓' --------
+console.log("[G] delivered reply clears the input");
+const delivered = runScenario(roster(), [{ key: KEY.down }, { key: KEY.space }, { text: "ship it" }, { key: KEY.enter }]);
+ok("delivered reply flashes 'sent ✓'", has(delivered.frames, "sent ✓"), lastFrame(delivered.frames).join("\n"));
+ok("delivered reply clears the input box", !has(delivered.frames, "reply ▸ ship it"), lastFrame(delivered.frames).join("\n"));
 
-// --- Scenario G: switching rows mid-peek must not send A's draft to B ---------
+// --- Scenario H: switching rows mid-peek must not send A's draft to B ---------
 // The draft is reset on ↑↓ so a half-typed message can't be delivered to whoever
 // happens to be selected when Enter is pressed.
-console.log("[G] switching rows mid-peek drops the draft");
-const g = runScenario(roster(), [
+console.log("[H] switching rows mid-peek drops the draft");
+const rowSwitch = runScenario(roster(), [
   { key: KEY.space, label: "peek the working row" },
   { text: "for the first one" },
   { key: KEY.down, label: "↓ switch rows" },
   { key: KEY.enter, label: "Enter on an empty box" },
 ]);
-ok("no reply was sent after switching rows", !g.calls.some((c) => c.fn === "sendReply"), JSON.stringify(g.calls));
+ok("no reply was sent after switching rows", !rowSwitch.calls.some((c) => c.fn === "sendReply"), JSON.stringify(rowSwitch.calls));
 
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });

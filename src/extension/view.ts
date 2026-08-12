@@ -7,7 +7,7 @@
 import { type TUI } from "@earendil-works/pi-tui";
 import { type Theme } from "@earendil-works/pi-coding-agent";
 import type { BrokerManager } from "./controller.js";
-import { groupRows, type ManagedRow } from "./render.js";
+import { groupRows, filterRows, type ManagedRow } from "./render.js";
 import { renderFrame } from "./frame.js";
 import type { ManagedId } from "../types.js";
 
@@ -32,6 +32,8 @@ export class AgentViewComponent {
   private sendError: string | undefined; // shown when a reply could not be delivered
   private renameMode = false;
   private renameBuf = "";
+  private filterMode = false; // true while typing a filter
+  private filterQuery = ""; // active filter; empty = show all
 
   constructor(
     private tui: TUI,
@@ -52,16 +54,23 @@ export class AgentViewComponent {
     }, 1000);
   }
 
+  /** Rows that pass the active filter — what the view actually shows/navigates. */
+  private visibleRows(): ManagedRow[] {
+    return filterRows(this.cachedRows, this.filterQuery);
+  }
+
   private refresh(): void {
     this.cachedRows = this.mgr.rows();
-    if (this.selectedId && !this.cachedRows.some((r) => r.id === this.selectedId)) {
-      this.selectedId = this.cachedRows[0]?.id;
+    const visible = this.visibleRows();
+    // Selection must stay within the visible (filtered) set.
+    if (this.selectedId && !visible.some((r) => r.id === this.selectedId)) {
+      this.selectedId = visible[0]?.id;
     }
-    if (!this.selectedId) this.selectedId = this.cachedRows[0]?.id;
+    if (!this.selectedId) this.selectedId = visible[0]?.id;
   }
 
   private flatRows(): ManagedRow[] {
-    return groupRows(this.cachedRows).flatMap((g) => g.rows);
+    return groupRows(this.visibleRows()).flatMap((g) => g.rows);
   }
 
   private color(name: string, s: string): string {
@@ -76,7 +85,7 @@ export class AgentViewComponent {
   render(width: number): string[] {
     this.refresh();
     return renderFrame(
-      this.cachedRows,
+      this.visibleRows(),
       width,
       {
         selectedId: this.selectedId,
@@ -86,12 +95,18 @@ export class AgentViewComponent {
         sendError: this.sendError,
         renameMode: this.renameMode,
         renameBuf: this.renameBuf,
+        filterMode: this.filterMode,
+        filterQuery: this.filterQuery,
       },
       (n, s) => this.color(n, s),
     );
   }
 
   handleInput(data: string): void {
+    if (this.filterMode) {
+      this.handleFilterInput(data);
+      return;
+    }
     if (this.renameMode) {
       this.handleRenameInput(data);
       return;
@@ -142,8 +157,42 @@ export class AgentViewComponent {
         this.renameBuf = sel?.title ?? "";
         this.tui.requestRender();
       }
-    } else if (data === "q" || data === "\x1b") {
+    } else if (data === "/") {
+      this.filterMode = true;
+      this.tui.requestRender();
+    } else if (data === "\x1b") {
+      // Esc clears an active filter first; a second Esc closes the view.
+      if (this.filterQuery) {
+        this.filterQuery = "";
+        this.refresh();
+        this.tui.requestRender();
+      } else {
+        this.close(null);
+      }
+    } else if (data === "q") {
       this.close(null);
+    }
+  }
+
+  private handleFilterInput(data: string): void {
+    if (data === "\r" || data === "\n") {
+      // Enter applies the filter and leaves typing mode (the filter stays active).
+      this.filterMode = false;
+      this.tui.requestRender();
+    } else if (data === "\x1b") {
+      // Esc clears the filter and exits.
+      this.filterMode = false;
+      this.filterQuery = "";
+      this.refresh();
+      this.tui.requestRender();
+    } else if (data === BACKSPACE || data === BACKSPACE_ALT) {
+      this.filterQuery = this.filterQuery.slice(0, -1);
+      this.refresh();
+      this.tui.requestRender();
+    } else if (data.length >= 1 && data.charCodeAt(0) >= 32 && !data.startsWith("\x1b")) {
+      this.filterQuery += data;
+      this.refresh();
+      this.tui.requestRender();
     }
   }
 

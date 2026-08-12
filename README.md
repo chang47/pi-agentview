@@ -8,7 +8,7 @@ Press **Left Arrow** on an empty prompt to open Agent View.
 Agent View   working=2  completed=1  attached=1
 ──────────────────────────────────────────────────────────────
  Working (2)
- ▸ ● refactor the parser — tool: edit                    2m14s
+ ▸ ● refactor the parser — tool: edit src/tokenizer.ts   2m14s
    ● add retry to the uploader — running                   47s
  Completed (1)
    ✓ fix the flaky test — all 42 tests pass              5m02s
@@ -52,7 +52,8 @@ Then start `pi` and press **Left Arrow** on an empty prompt (or run `/agents`).
 | `n` | create a new background session |
 | `d` | remove from the view (the pi session JSONL is kept) |
 | `r` | rename |
-| `Esc` / `q` | close |
+| `/` | filter the list (free text, or `s:working` / `s:blocked`); `Esc` clears |
+| `Esc` / `q` | close (`Esc` clears an active filter first) |
 
 ## How it works
 
@@ -118,7 +119,7 @@ npm test                # whole suite, fully OFFLINE — no model, no key, no ne
 
 **`npm test` is fully offline and deterministic.** It runs the three code suites — platform +
 registry (12), render + BrokerManager + safety regressions (25), broker/RPC/IPC (25) — plus the
-visual suites (9 golden **stills** + a driven-flow animated SVG). The broker suite drives a
+visual suites (10 golden **stills** + a driven-flow animated SVG). The broker suite drives a
 scripted **fake pi** (`test/fakes/fake-pi.mjs`) instead of a real agent, so there is no model
 call, credential, or network dependency anywhere. See [`CLAUDE.md`](./CLAUDE.md) for how the fake
 works and how to add/regenerate visual goldens (`npm run test:visual:update`).

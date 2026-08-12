@@ -89,6 +89,17 @@ console.log("\n[2b] deriveState transitions");
   ok("agent_start -> working", st.state === "working");
   st = deriveState(st, { type: "tool_execution_start", toolName: "bash" }, 2) ?? st;
   ok("tool -> activity 'tool: bash'", st.activity === "tool: bash");
+  // Live tool detail (#10): a tool event's target/args surface next to the name.
+  {
+    let ts = deriveState(initialState("tool"), { type: "agent_start" }, 1)!;
+    ts = deriveState(ts, { type: "tool_execution_start", toolName: "edit", args: { file_path: "src/tokenizer.ts" } }, 2) ?? ts;
+    ok("tool_execution_start surfaces target", ts.activity === "tool: edit src/tokenizer.ts", `activity=${ts.activity}`);
+    ts = deriveState(ts, { type: "tool_execution_update", target: "src/lexer.ts" }, 3) ?? ts;
+    ok("tool_execution_update refines target (keeps name)", ts.activity === "tool: edit src/lexer.ts", `activity=${ts.activity}`);
+    const before = ts.activity;
+    ts = deriveState(ts, { type: "tool_execution_update" }, 4) ?? ts;
+    ok("empty tool_execution_update keeps the current activity", ts.activity === before, `activity=${ts.activity}`);
+  }
   st = deriveState(st, { type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "All done here." }] } }, 3) ?? st;
   ok("message_end captures finalResponse", st.finalResponse === "All done here.", `finalResponse=${st.finalResponse}`);
   st = deriveState(st, { type: "agent_settled" }, 4) ?? st;
