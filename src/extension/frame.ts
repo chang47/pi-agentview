@@ -4,7 +4,7 @@
 // directly from fixtures (see test/visual) to snapshot every screen state.
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
-import { groupRows, statusGlyph, formatElapsed, type ManagedRow } from "./render.js";
+import { groupRows, statusGlyph, formatElapsed, formatStats, type ManagedRow } from "./render.js";
 import type { ManagedId } from "../types.js";
 
 /** UI-local state the frame needs that isn't part of a row. */
@@ -93,10 +93,16 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
       const marker = sel ? color("accent", "▸ ") : "  ";
       const glyph = color(stateColorName(row), statusGlyph(row.state));
       const elapsed = row.elapsedMs !== undefined ? color("muted", ` ${formatElapsed(row.elapsedMs)}`) : "";
-      const title = truncateToWidth(row.title, Math.max(1, width - 8 - (row.elapsedMs !== undefined ? 6 : 0)), "…");
-      const used = 4 + title.length + elapsed.length;
+      const statsStr = formatStats(row.stats);
+      const stats = statsStr ? color("muted", ` ${statsStr}`) : "";
+      // Reserve trailing room so a long title truncates BEFORE the stats/elapsed
+      // rather than running under them. Stats reserves by its own length (absent
+      // → zero reservation), so rows without stats stay byte-identical to before.
+      const reserveStats = statsStr ? statsStr.length + 1 : 0;
+      const title = truncateToWidth(row.title, Math.max(1, width - 8 - (row.elapsedMs !== undefined ? 6 : 0) - reserveStats), "…");
+      const used = 4 + title.length + elapsed.length + stats.length;
       const previewTxt = color("muted", truncateToWidth(` — ${previewOf(row)}`, Math.max(0, width - used), ""));
-      lines.push(`${marker}${glyph} ${title}${previewTxt}${elapsed}`);
+      lines.push(`${marker}${glyph} ${title}${previewTxt}${elapsed}${stats}`);
 
       if (sel && ui.peekOpen) {
         const body = row.state === "awaiting_input" ? row.activity : row.reply ?? row.activity;

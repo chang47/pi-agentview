@@ -60,6 +60,19 @@ export interface RegistryEntry {
   brokerPid?: number;
 }
 
+/** Per-session usage from pi's `get_session_stats` RPC. Polled by the broker and
+ *  surfaced on the row so cost/context are visible at a glance — the one number
+ *  even Claude Code's Agent View doesn't show. All fields optional except tokens:
+ *  pi may report any subset, and we render whatever we get. */
+export interface SessionStats {
+  /** Total tokens consumed by the session (input + output + cache). */
+  tokens: number;
+  /** Estimated spend in USD, if pi reports one. */
+  costUsd?: number;
+  /** Context-window utilization, 0..100 (share of the model's context in use). */
+  contextPct?: number;
+}
+
 /** Operational state owned by the broker. Reconstructable from JSONL + RPC. */
 export interface BrokerState {
   id: ManagedId;
@@ -72,6 +85,8 @@ export interface BrokerState {
   waitingSince?: number;
   lastEventSeq: number; // highest journal sequence number applied
   updatedAt: number;
+  /** Latest usage stats from pi's get_session_stats RPC (tokens / cost / context). */
+  stats?: SessionStats;
   /** Active blocking dialog (when state === "awaiting_input"). */
   pendingDialog?: {
     id: string;

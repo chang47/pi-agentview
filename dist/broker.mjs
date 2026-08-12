@@ -4,13 +4,14 @@ var __esm = (fn, res) => function __init() {
 };
 
 // src/platform/constants.ts
-var BROKER_CHILD_ENV, STATE_DIR_ENV, SPEC_WATCH_MS;
+var BROKER_CHILD_ENV, STATE_DIR_ENV, SPEC_WATCH_MS, STATS_POLL_MS;
 var init_constants = __esm({
   "src/platform/constants.ts"() {
     "use strict";
     BROKER_CHILD_ENV = "PI_AGENTVIEW_BROKER_CHILD";
     STATE_DIR_ENV = "PI_AGENTVIEW_STATE_DIR";
     SPEC_WATCH_MS = 3e4;
+    STATS_POLL_MS = 5e3;
   }
 });
 
@@ -523,6 +524,26 @@ function initialState(id) {
     updatedAt: Date.now()
   };
 }
+function parseSessionStats(resp) {
+  const d = resp.data ?? resp.stats;
+  if (!d || typeof d !== "object") return void 0;
+  const num = (v) => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim()) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : void 0;
+    }
+    return void 0;
+  };
+  const tokens = num(d.totalTokens) ?? num(d.tokens) ?? num(d.total_tokens) ?? (() => {
+    const io = (num(d.inputTokens) ?? num(d.input_tokens) ?? 0) + (num(d.outputTokens) ?? num(d.output_tokens) ?? 0);
+    return io > 0 ? io : void 0;
+  })();
+  const costUsd = num(d.costUsd) ?? num(d.cost) ?? num(d.cost_usd);
+  const contextPct = num(d.contextPct) ?? num(d.context_pct) ?? num(d.contextPercent);
+  if (tokens === void 0 && costUsd === void 0 && contextPct === void 0) return void 0;
+  return { tokens: tokens ?? 0, costUsd, contextPct };
+}
 function assistantText(message) {
   const m = message;
   if (!m || m.role !== "assistant" || !Array.isArray(m.content)) return void 0;
@@ -837,6 +858,7 @@ async function runBroker(rawArgv) {
     if (shuttingDown) return;
     shuttingDown = true;
     clearInterval(specWatch);
+    clearInterval(statsWatch);
     try {
       await rpc.stop();
     } catch {
@@ -853,8 +875,27 @@ async function runBroker(rawArgv) {
     })();
   }, SPEC_WATCH_MS);
   specWatch.unref?.();
+  let statsInFlight = false;
+  const pollStats = async () => {
+    if (shuttingDown || statsInFlight || !rpc.isAlive) return;
+    statsInFlight = true;
+    try {
+      const resp = await rpc.send({ type: "get_session_stats" });
+      const next = parseSessionStats(resp);
+      if (next && !sameStats(state.stats, next)) await persistState({ ...state, stats: next });
+    } catch {
+    } finally {
+      statsInFlight = false;
+    }
+  };
+  const statsWatch = setInterval(() => void pollStats(), STATS_POLL_MS);
+  statsWatch.unref?.();
+  void pollStats();
   process.on("SIGTERM", () => void shutdown());
   process.on("SIGINT", () => void shutdown());
+}
+function sameStats(a, b) {
+  return a !== void 0 && a.tokens === b.tokens && a.costUsd === b.costUsd && a.contextPct === b.contextPct;
 }
 
 // src/broker.ts

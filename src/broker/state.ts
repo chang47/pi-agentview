@@ -5,7 +5,7 @@
 // means the latest requested run settled successfully (agent_settled), NOT that
 // the process exited — the worker stays available in the background.
 
-import type { BrokerState, SessionState } from "../types.js";
+import type { BrokerState, SessionState, SessionStats } from "../types.js";
 import type { RpcMessage } from "./rpc-client.js";
 
 export function initialState(id: string): BrokerState {
@@ -16,6 +16,35 @@ export function initialState(id: string): BrokerState {
     lastEventSeq: 0,
     updatedAt: Date.now(),
   };
+}
+
+/** Parse pi's `get_session_stats` response into a SessionStats, or undefined if
+ *  the response carries no usable numbers. Defensive about shape: pi's schema for
+ *  this command isn't documented here, so we accept the obvious key aliases and
+ *  fall back to inputTokens + outputTokens when no total is given. Returns
+ *  undefined (not a zeroed object) when nothing is present, so the broker can skip
+ *  a state re-broadcast rather than overwrite real stats with empties. */
+export function parseSessionStats(resp: RpcMessage): SessionStats | undefined {
+  const d = (resp.data ?? resp.stats) as Record<string, unknown> | undefined;
+  if (!d || typeof d !== "object") return undefined;
+  const num = (v: unknown): number | undefined => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim()) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+  };
+  const tokens =
+    num(d.totalTokens) ?? num(d.tokens) ?? num(d.total_tokens) ??
+    (() => {
+      const io = (num(d.inputTokens) ?? num(d.input_tokens) ?? 0) + (num(d.outputTokens) ?? num(d.output_tokens) ?? 0);
+      return io > 0 ? io : undefined;
+    })();
+  const costUsd = num(d.costUsd) ?? num(d.cost) ?? num(d.cost_usd);
+  const contextPct = num(d.contextPct) ?? num(d.context_pct) ?? num(d.contextPercent);
+  if (tokens === undefined && costUsd === undefined && contextPct === undefined) return undefined;
+  return { tokens: tokens ?? 0, costUsd, contextPct };
 }
 
 function assistantText(message: unknown): string | undefined {

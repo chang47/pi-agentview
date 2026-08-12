@@ -1,6 +1,6 @@
 // Pure view-model helpers for Agent View. No TUI deps -> unit-testable.
 
-import { STATE_ORDER, type BrokerState, type ManagedId, type RegistryEntry, type SessionState } from "../types.js";
+import { STATE_ORDER, type BrokerState, type ManagedId, type RegistryEntry, type SessionState, type SessionStats } from "../types.js";
 
 export interface ManagedRow {
   id: ManagedId;
@@ -9,6 +9,8 @@ export interface ManagedRow {
   activity: string;
   /** The model's latest reply text (when available) — shown for completed rows + peek. */
   reply?: string;
+  /** Per-session usage from get_session_stats — tokens / cost / context%. */
+  stats?: SessionStats;
   /** ms since the semantic state transition (run start / completion / wait). */
   elapsedMs: number | undefined;
   needsInput: boolean;
@@ -106,6 +108,39 @@ export function formatElapsed(ms: number | undefined): string {
   return `${d}d${h % 24}h`;
 }
 
+/** Round to one decimal, dropping a trailing ".0" (12.0 -> "12", 12.34 -> "12.3"). */
+function round1(n: number): string {
+  const r = Math.round(n * 10) / 10;
+  return Number.isInteger(r) ? `${r}` : `${r}`;
+}
+
+/** Compact token count: 12.8k / 1.2M / 834. */
+export function formatTokens(n: number | undefined): string {
+  if (n === undefined || !Number.isFinite(n) || n < 0) return "";
+  if (n >= 1_000_000) return `${round1(n / 1_000_000)}M`;
+  if (n >= 1_000) return `${round1(n / 1_000)}k`;
+  return `${Math.round(n)}`;
+}
+
+/** USD cost with up to 4 decimals, trailing zeros stripped ($0.0421 / $0.04 / $1). */
+function formatCost(usd: number | undefined): string {
+  if (usd === undefined || !Number.isFinite(usd) || usd < 0) return "";
+  return `$${usd.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}`;
+}
+
+/** One-glance usage: `12.8k·$0.04·42%`. Renders whatever fields are present; an
+ *  empty result means the row should show nothing (callers gate on row.stats). */
+export function formatStats(s: SessionStats | undefined): string {
+  if (!s) return "";
+  const parts: string[] = [];
+  const tok = formatTokens(s.tokens);
+  if (tok) parts.push(tok);
+  const cost = formatCost(s.costUsd);
+  if (cost) parts.push(cost);
+  if (s.contextPct !== undefined && Number.isFinite(s.contextPct)) parts.push(`${round1(s.contextPct)}%`);
+  return parts.join("·");
+}
+
 /** Build display rows from registry entries + per-id broker states. */
 export function rowsFor(
   entries: RegistryEntry[],
@@ -136,6 +171,7 @@ export function rowsFor(
       state,
       activity,
       reply: st?.finalResponse,
+      stats: st?.stats,
       elapsedMs: since !== undefined ? now - since : undefined,
       needsInput: state === "awaiting_input",
       jsonlPath: e.jsonlPath,

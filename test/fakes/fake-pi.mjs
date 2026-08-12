@@ -157,6 +157,16 @@ async function handleCommand(msg) {
     case "get_messages":
       emit({ type: "response", id: msg.id, command: "get_messages", data: { messages: [] } });
       return;
+    case "get_session_stats":
+      // Correlated request: cumulative session usage. Fixed numbers so a broker
+      // smoke test can assert they round-trip to a client over IPC.
+      emit({
+        type: "response",
+        id: msg.id,
+        command: "get_session_stats",
+        data: { totalTokens: 12834, inputTokens: 10100, outputTokens: 2734, costUsd: 0.0421, contextPct: 42 },
+      });
+      return;
     case "prompt":
     case "follow_up":
     case "steer":
