@@ -323,6 +323,20 @@ export class BrokerManager {
     return true;
   }
 
+  /** Abort the in-flight run on a background session. Returns false when the row
+   *  can't carry the command (attached rows are driven by their own terminal; a
+   *  missing client means no live broker). The view additionally gates this on
+   *  the row being `working` — abort is only meaningful with a run in progress.
+   *  Fire-and-forget like `write`: pi acks via events, so the state transition
+   *  (working → idle/completed) arrives through the normal deriveState path. */
+  abort(id: ManagedId): boolean {
+    if (id.startsWith("fg:")) return false; // attached rows are driven by their own terminal
+    const ms = this.sessions.get(id);
+    if (!ms?.client) return false;
+    ms.client.sendRpc({ type: "abort" });
+    return true;
+  }
+
   async create(opts: CreateOptions): Promise<ManagedId> {
     const id = `s-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     // The JSONL lives in THIS session's own dir unless the caller names a path.

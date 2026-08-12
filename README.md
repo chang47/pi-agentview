@@ -15,7 +15,7 @@ Agent View   working=2  completed=1  attached=1
  Attached (1)
    ▶ session 3 — C:\Users\me\project
 ──────────────────────────────────────────────────────────────
- ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close
+ ↑↓ select · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close
 ```
 
 ## Install
@@ -41,6 +41,7 @@ Then start `pi` and press **Left Arrow** on an empty prompt (or run `/agents`).
 - **Peek and reply** without leaving the dashboard — press `Space`, type, `Enter`.
 - **Resume** any session into your terminal with the *full* native pi UX — every slash command, the real editor, `/model`, proper tool rendering.
 - **Rename** rows (`r`), **remove** them (`d` — your conversation JSONL is always preserved).
+- **Abort a runaway run** (`a`) without attaching — stops a `working` session from the dashboard; refused on rows that aren't running.
 
 ## Keys
 
@@ -51,6 +52,7 @@ Then start `pi` and press **Left Arrow** on an empty prompt (or run `/agents`).
 | `Enter` | resume that session in this terminal |
 | `n` | create a new background session |
 | `d` | remove from the view (the pi session JSONL is kept) |
+| `a` | abort the run on a `working` row (no need to attach); refused otherwise |
 | `r` | rename |
 | `/` | filter the list (free text, or `s:working` / `s:blocked`); `Esc` clears |
 | `Esc` / `q` | close (`Esc` clears an active filter first) |
