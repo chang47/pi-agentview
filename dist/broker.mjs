@@ -304,23 +304,36 @@ var Journal = class {
   }
   seq = 0;
   ring = [];
+  persisted = [];
   fh = null;
   async open() {
     try {
       const data = await readFile(this.path, "utf8");
+      const parsed = [];
       for (const line of data.split("\n")) {
         if (!line.trim()) continue;
         try {
           const e = JSON.parse(line);
-          if (typeof e.seq === "number" && e.seq > this.seq) this.seq = e.seq;
+          if (typeof e.seq !== "number") continue;
+          parsed.push(e);
+          if (e.seq > this.seq) this.seq = e.seq;
         } catch {
         }
       }
+      this.persisted = parsed;
+      const start = Math.max(0, parsed.length - RING_CAP);
+      this.ring = parsed.slice(start);
     } catch (e) {
       if (e.code !== "ENOENT") throw e;
     }
     await mkdir(dirname2(this.path), { recursive: true });
     this.fh = await open(this.path, "a");
+  }
+  /** Every event recovered from disk on `open()`, in order. The broker folds
+   *  these through `deriveState` to rebuild BrokerState on restart — the journal
+   *  is authoritative, independent of the secondary state-store snapshot (G1). */
+  get persistedEvents() {
+    return this.persisted;
   }
   /** Append an event, assign the next seq, persist, keep in the ring. */
   async append(type, payload) {
@@ -751,6 +764,16 @@ function parseArgs(argv) {
   }
   return out;
 }
+function rebuildStateFromJournal(id, events) {
+  let state = initialState(id);
+  for (const ev of events) {
+    const next = deriveState(state, ev.payload, ev.seq);
+    if (next) state = next;
+  }
+  const last = events[events.length - 1];
+  if (last?.timestamp) state = { ...state, updatedAt: last.timestamp };
+  return state;
+}
 async function runBroker(rawArgv) {
   const { id, nonce } = parseArgs(rawArgv);
   const pid = process.pid;
@@ -767,10 +790,13 @@ async function runBroker(rawArgv) {
     process.exit(4);
   }
   await acquireLock(brokerLockPath(id), pid, nonce);
-  let state = await stateStore.read(id) ?? initialState(id);
-  if (state.state === "working") state = { ...state, state: "idle", activity: "ready" };
   const journal = new Journal(journalPath(id));
   await journal.open();
+  let state = rebuildStateFromJournal(id, journal.persistedEvents);
+  if (state.state === "working" || state.state === "awaiting_input") {
+    state = { ...state, state: "idle", activity: "ready", pendingDialog: void 0, waitingSince: void 0 };
+  }
+  await stateStore.write(id, state);
   const rpc = new PiRpcClient({
     jsonlPath: spec.jsonlPath,
     cwd: spec.cwd,

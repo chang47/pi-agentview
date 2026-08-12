@@ -13,7 +13,7 @@ import { BrokerSpecStore, BrokerStateStore } from "../registry.js";
 import { brokerLockPath, journalPath, socketAddress } from "../platform/paths.js";
 import { isAlive } from "../platform/pid.js";
 import { SPEC_WATCH_MS } from "../platform/constants.js";
-import type { BrokerState } from "../types.js";
+import type { BrokerState, JournalEvent } from "../types.js";
 
 export interface BrokerArgs {
   id: string;
@@ -32,6 +32,23 @@ function parseArgs(argv: string[]): BrokerArgs {
     process.exit(2);
   }
   return out as BrokerArgs;
+}
+
+/** Rebuild BrokerState by folding the journal's persisted events through the
+ *  same derivation used live. The journal is the authoritative record (G1), so
+ *  this is lossless by construction — every field `deriveState` sets is
+ *  recreated from the events that produced it, including the last reply. */
+function rebuildStateFromJournal(id: string, events: readonly JournalEvent[]): BrokerState {
+  let state = initialState(id);
+  for (const ev of events) {
+    const next = deriveState(state, ev.payload as RpcMessage, ev.seq);
+    if (next) state = next;
+  }
+  // updatedAt would otherwise be the rebuild tick for every event; pin it to the
+  // last event's real time so a restarted row doesn't masquerade as just-changed.
+  const last = events[events.length - 1];
+  if (last?.timestamp) state = { ...state, updatedAt: last.timestamp };
+  return state;
 }
 
 export async function runBroker(rawArgv: string[]): Promise<void> {
@@ -56,12 +73,30 @@ export async function runBroker(rawArgv: string[]): Promise<void> {
   await acquireLock(brokerLockPath(id), pid, nonce);
 
   // --- state, journal, rpc, ipc --------------------------------------------
-  let state: BrokerState = (await stateStore.read(id)) ?? initialState(id);
-  // On restart, a stale "working" must not persist (the run that set it is gone).
-  if (state.state === "working") state = { ...state, state: "idle", activity: "ready" };
-
   const journal = new Journal(journalPath(id));
   await journal.open();
+
+  // JSONL is the source of truth (G1): rebuild BrokerState by replaying the
+  // journal rather than trusting the secondary state-store snapshot. That
+  // snapshot can be absent or corrupt (BrokerStateStore.read -> undefined),
+  // which left a restarted row idle with no last reply even though the
+  // assistant's final message was sitting in the journal. The journal is
+  // authoritative; the state-store stays a cached projection the foreground
+  // reads (see persistState below).
+  let state: BrokerState = rebuildStateFromJournal(id, journal.persistedEvents);
+
+  // On restart, a stale live run must not persist — the worker that set it died
+  // with the old broker. Keep the recovered last reply/context, drop only the
+  // live-run claim (same conservative-interrupt invariant as the exit handler:
+  // never pretend work is in progress that isn't). awaiting_input is reset too:
+  // its pending dialog belonged to that dead worker.
+  if (state.state === "working" || state.state === "awaiting_input") {
+    state = { ...state, state: "idle", activity: "ready", pendingDialog: undefined, waitingSince: undefined };
+  }
+
+  // Sync the rebuilt state into the snapshot so a disconnected foreground (which
+  // reads the state-store) sees the recovered reply before the next live event.
+  await stateStore.write(id, state);
 
   const rpc = new PiRpcClient({
     jsonlPath: spec.jsonlPath,
