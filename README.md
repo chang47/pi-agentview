@@ -52,7 +52,8 @@ Then start `pi` and press **Left Arrow** on an empty prompt (or run `/agents`).
 | `n` | create a new background session |
 | `d` | remove from the view (the pi session JSONL is kept) |
 | `r` | rename |
-| `Esc` / `q` | close |
+| `/` | filter the list (free text, or `s:working` / `s:blocked`); `Esc` clears |
+| `Esc` / `q` | close (`Esc` clears an active filter first) |
 
 ## How it works
 

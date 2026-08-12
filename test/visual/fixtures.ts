@@ -88,4 +88,12 @@ export const FIXTURES: Fixture[] = [
     rows: [awaiting, working],
     ui: ui({ selectedId: "s3", peekOpen: true }),
   },
+  {
+    name: "filter-active",
+    width: 76,
+    // Rows are pre-filtered (the component filters before renderFrame); this is
+    // the `s:working` result over the mixed fleet — with the filter line showing.
+    rows: [working],
+    ui: ui({ selectedId: "s1", filterMode: true, filterQuery: "s:working" }),
+  },
 ];

@@ -18,6 +18,39 @@ export interface ManagedRow {
   attached?: boolean;
 }
 
+/** State aliases accepted in a `s:<state>` filter token. */
+const STATE_ALIASES: Record<string, SessionState> = {
+  blocked: "awaiting_input",
+  waiting: "awaiting_input",
+  done: "completed",
+  running: "working",
+};
+
+/**
+ * Filter rows by a query. Space-separated tokens are ANDed. A `s:<state>` token
+ * matches by session state (via the aliases above, else a substring of the state,
+ * so `s:idle` / `s:working` / `s:blocked` all work); any other token is free text
+ * matched against title + activity + reply. Empty query returns all rows.
+ * Pure -> unit-testable.
+ */
+export function filterRows(rows: ManagedRow[], query: string): ManagedRow[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return rows;
+  const tokens = q.split(/\s+/);
+  return rows.filter((row) =>
+    tokens.every((t) => {
+      if (t.startsWith("s:")) {
+        const s = t.slice(2);
+        if (!s) return true;
+        const target = STATE_ALIASES[s] ?? s;
+        return row.state === target || row.state.includes(s);
+      }
+      const hay = `${row.title} ${row.activity} ${row.reply ?? ""}`.toLowerCase();
+      return hay.includes(t);
+    }),
+  );
+}
+
 export function statusGlyph(state: SessionState): string {
   switch (state) {
     case "working":

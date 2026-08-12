@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="751" height="268" viewBox="0 0 751 268" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" width="843" height="268" viewBox="0 0 843 268" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
 <title>Agent View — interaction flow</title>
-<rect width="751" height="268" fill="#0d1117"/>
+<rect width="843" height="268" fill="#0d1117"/>
 <g dominant-baseline="alphabetic">
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.0000;0.1000" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -24,7 +24,7 @@
 <text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
 <text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
 <text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.1000;0.2000" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -48,7 +48,7 @@
 <text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
 <text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
 <text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.2000;0.3000" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -152,7 +152,7 @@
 <text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
 <text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
 <text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.6000;0.7000" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -176,7 +176,7 @@
 <text x="39.2" y="169.6" fill="#c9d1d9"> scratch session</text>
 <text x="173.6" y="169.6" fill="#6e7681"> — ready</text>
 <text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="13.00s" keyTimes="0;0.7000;0.8000" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -252,7 +252,7 @@
 <text x="39.2" y="169.6" fill="#c9d1d9"> scratch session (renamed)</text>
 <text x="257.6" y="169.6" fill="#6e7681"> — ready</text>
 <text x="14.0" y="189.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="209.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
 </g>
 </g>
 </svg>

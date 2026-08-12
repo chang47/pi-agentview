@@ -16,6 +16,11 @@ export interface FrameUi {
   sendError?: string;
   renameMode: boolean;
   renameBuf: string;
+  /** True while typing a filter (renders a cursor). */
+  filterMode?: boolean;
+  /** The active filter query (rows are pre-filtered by the caller; this only
+   *  drives the filter line + the "no matches" message). */
+  filterQuery?: string;
 }
 
 /** Wraps `s` in a theme color by semantic name (accent/muted/success/…). The
@@ -64,8 +69,21 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
   lines.push(color("accent", "Agent View") + (summary ? color("muted", `   ${summary}`) : ""));
   lines.push(rule(width));
 
+  const filtering = ui.filterMode || (ui.filterQuery !== undefined && ui.filterQuery.length > 0);
+  if (filtering) {
+    const cursor = ui.filterMode ? "█" : "";
+    lines.push(color("accent", "  filter ▸ ") + truncateToWidth((ui.filterQuery ?? "") + cursor, Math.max(1, width - 11), ""));
+  }
+
   if (groups.length === 0) {
-    lines.push(color("muted", "  No background sessions. Press n to create one, Esc to close."));
+    lines.push(
+      color(
+        "muted",
+        ui.filterQuery
+          ? `  No sessions match "${ui.filterQuery}". Esc clears the filter.`
+          : "  No background sessions. Press n to create one, Esc to close.",
+      ),
+    );
   }
 
   for (const g of groups) {
@@ -102,13 +120,15 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
   }
   lines.push(rule(width));
   const selAttached = rows.some((r) => r.id === ui.selectedId && r.attached);
-  const hint = ui.renameMode
-    ? " type new title · Enter save · Esc cancel"
-    : ui.peekOpen
-      ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
-      : selAttached
-        ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-        : " ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
+  const hint = ui.filterMode
+    ? " type to filter · s:working / s:blocked · Enter apply · Esc clear"
+    : ui.renameMode
+      ? " type new title · Enter save · Esc cancel"
+      : ui.peekOpen
+        ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
+        : selAttached
+          ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
+          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
   lines.push(color("muted", hint));
   return lines;
 }
