@@ -23,7 +23,7 @@ export const KEY = {
 } as const;
 
 export interface Call {
-  fn: "remove" | "sendReply" | "setTitle" | "tick";
+  fn: "remove" | "sendReply" | "setTitle" | "tick" | "abort";
   args: unknown[];
 }
 
@@ -32,6 +32,7 @@ export interface Call {
 export class MockManager {
   private roster: ManagedRow[];
   replyOk = true;
+  abortOk = true;
   calls: Call[] = [];
 
   constructor(rows: ManagedRow[]) {
@@ -53,6 +54,10 @@ export class MockManager {
   sendReply(id: ManagedId, text: string): boolean {
     this.calls.push({ fn: "sendReply", args: [id, text] });
     return this.replyOk;
+  }
+  abort(id: ManagedId): boolean {
+    this.calls.push({ fn: "abort", args: [id] });
+    return this.abortOk;
   }
   async setTitle(id: ManagedId, text: string): Promise<void> {
     this.calls.push({ fn: "setTitle", args: [id, text] });

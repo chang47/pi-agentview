@@ -21,6 +21,10 @@ export interface FrameUi {
   /** The active filter query (rows are pre-filtered by the caller; this only
    *  drives the filter line + the "no matches" message). */
   filterQuery?: string;
+  /** Transient one-shot status line (e.g. an abort result). Cleared by the next
+   *  keystroke; rendered as a single line above the hint when set. */
+  flash?: string;
+  flashKind?: "success" | "error";
 }
 
 /** Wraps `s` in a theme color by semantic name (accent/muted/success/…). The
@@ -118,6 +122,11 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
   if (ui.renameMode) {
     lines.push(color("accent", "  rename ▸ ") + truncateToWidth(ui.renameBuf + "█", Math.max(1, width - 11), ""));
   }
+  if (ui.flash) {
+    const c = ui.flashKind === "error" ? "error" : "success";
+    const glyph = ui.flashKind === "error" ? "✗" : "✓";
+    lines.push(color(c, `  ${glyph} ${truncateToWidth(ui.flash, Math.max(2, width - 4), "…")}`));
+  }
   lines.push(rule(width));
   const selAttached = rows.some((r) => r.id === ui.selectedId && r.attached);
   const hint = ui.filterMode
@@ -128,7 +137,7 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
         ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
         : selAttached
           ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
+          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close";
   lines.push(color("muted", hint));
   return lines;
 }

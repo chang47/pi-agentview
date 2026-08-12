@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="843" height="188" viewBox="0 0 843 188" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" width="927" height="188" viewBox="0 0 927 188" font-family="'Cascadia Mono','Consolas','DejaVu Sans Mono','Menlo',monospace" font-size="14" xml:space="preserve">
 <title>Agent View — fake-driven flow</title>
-<rect width="843" height="188" fill="#0d1117"/>
+<rect width="927" height="188" fill="#0d1117"/>
 <g dominant-baseline="alphabetic">
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.0000;0.1111" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -12,7 +12,7 @@
 <text x="39.2" y="89.6" fill="#c9d1d9"> refactor the parser</text>
 <text x="207.2" y="89.6" fill="#6e7681"> — ready</text>
 <text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.1111;0.2222" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -25,7 +25,7 @@
 <text x="207.2" y="89.6" fill="#6e7681"> — running</text>
 <text x="291.2" y="89.6" fill="#6e7681"> 3s</text>
 <text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.2222;0.3333" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -38,7 +38,7 @@
 <text x="207.2" y="89.6" fill="#6e7681"> — tool: edit src/tokenizer.ts</text>
 <text x="459.2" y="89.6" fill="#6e7681"> 3s</text>
 <text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.3333;0.4444" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -51,7 +51,7 @@
 <text x="207.2" y="89.6" fill="#6e7681"> — responded</text>
 <text x="308.0" y="89.6" fill="#6e7681"> 3s</text>
 <text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.4444;0.5556" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>
@@ -64,7 +64,7 @@
 <text x="207.2" y="89.6" fill="#6e7681"> — Done — split the tokenizer out; all </text>
 <text x="534.8" y="89.6" fill="#6e7681"> 48s</text>
 <text x="14.0" y="109.6" fill="#6e7681">────────────────────────────────────────────────────────────────────────────</text>
-<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close</text>
+<text x="14.0" y="129.6" fill="#6e7681"> ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · a abort · r rename · Esc close</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" repeatCount="indefinite" dur="9.90s" keyTimes="0;0.5556;0.6667" values="0;1;0"/>
 <text x="14.0" y="29.6" fill="#56d4dd">Agent View</text>

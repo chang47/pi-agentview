@@ -133,6 +133,37 @@ ok(
   lastFrame(d4.frames).join("\n"),
 );
 
+// --- Scenario E: abort a running session; refused on non-working rows --------
+console.log("[E] abort: invoked on a working row, refused elsewhere");
+const abortRoster: ManagedRow[] = [
+  row({ id: "s1", title: "refactor the parser", state: "working", activity: "tool: edit", elapsedMs: 47_000 }),
+  row({ id: "s2", title: "fix the flaky uploader test", state: "completed", activity: "responded", reply: "done", elapsedMs: 5_000 }),
+];
+// s1 (working) is selected initially.
+const e1 = runScenario(abortRoster, [{ key: "a", label: "a: abort working" }]);
+ok(
+  "abort invoked on the selected working row",
+  e1.calls.some((c) => c.fn === "abort" && c.args[0] === "s1"),
+  JSON.stringify(e1.calls),
+);
+ok(
+  "abort-sent flash is shown (not silent)",
+  lastFrame(e1.frames).some((l) => l.includes("abort sent")) && !lastFrame(e1.frames).some((l) => l.includes("sent ✓")),
+  lastFrame(e1.frames).join("\n"),
+);
+// Move to the completed row and try to abort it — refused, no manager call.
+const e2 = runScenario(abortRoster, [{ key: KEY.down, label: "↓ select completed" }, { key: "a", label: "a: abort completed" }]);
+ok(
+  "abort refused on a non-working row (never invoked)",
+  !e2.calls.some((c) => c.fn === "abort" && c.args[0] === "s2"),
+  JSON.stringify(e2.calls),
+);
+ok(
+  "refusal surfaces a flash (not a silent no-op)",
+  lastFrame(e2.frames).some((l) => l.includes("can only abort")),
+  lastFrame(e2.frames).join("\n"),
+);
+
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });
 await mkdir(ARTIFACT_DIR, { recursive: true });

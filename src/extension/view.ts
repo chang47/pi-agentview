@@ -2,7 +2,7 @@
 // with a peek panel that doubles as a reply input (type + Enter to send a
 // follow-up to that background session, no attach).
 // Keys: ↑↓/j/k select · Space peek (then type to reply, Enter sends) ·
-//       Enter resume · n new · d remove · Esc close
+//       Enter resume · n new · d remove · a abort (working row) · r rename · Esc close
 
 import { type TUI } from "@earendil-works/pi-tui";
 import { type Theme } from "@earendil-works/pi-coding-agent";
@@ -34,6 +34,10 @@ export class AgentViewComponent {
   private renameBuf = "";
   private filterMode = false; // true while typing a filter
   private filterQuery = ""; // active filter; empty = show all
+  // Transient one-shot status line (e.g. an abort result). Any next keystroke
+  // clears it, mirroring how the peek panel clears its delivery error.
+  private flash: string | undefined;
+  private flashKind: "success" | "error" | undefined;
 
   constructor(
     private tui: TUI,
@@ -97,12 +101,17 @@ export class AgentViewComponent {
         renameBuf: this.renameBuf,
         filterMode: this.filterMode,
         filterQuery: this.filterQuery,
+        flash: this.flash,
+        flashKind: this.flashKind,
       },
       (n, s) => this.color(n, s),
     );
   }
 
   handleInput(data: string): void {
+    // Any keystroke dismisses the transient status line.
+    this.flash = undefined;
+    this.flashKind = undefined;
     if (this.filterMode) {
       this.handleFilterInput(data);
       return;
@@ -151,6 +160,24 @@ export class AgentViewComponent {
         });
         this.tui.requestRender();
       }
+    } else if (data === "a") {
+      // Abort the run on the selected row. Only a `working` session has a run to
+      // stop; on anything else (completed/idle/attached) abort is refused here
+      // so the user gets feedback instead of silently no-op'ing. Today you'd have
+      // to attach to the session to stop a runaway.
+      if (this.selectedId && sel?.state === "working") {
+        if (this.mgr.abort(this.selectedId)) {
+          this.flash = "abort sent — stopping the run";
+          this.flashKind = "success";
+        } else {
+          this.flash = "no live broker for that session — it will reconnect";
+          this.flashKind = "error";
+        }
+      } else {
+        this.flash = "can only abort a running (working) session";
+        this.flashKind = "error";
+      }
+      this.tui.requestRender();
     } else if (data === "r") {
       if (this.selectedId) {
         this.renameMode = true;
