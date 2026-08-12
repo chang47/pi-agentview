@@ -94,12 +94,14 @@ ok(
 
 // --- Scenario C: an attached (foreground) row can't be resumed or removed -----
 console.log("[C] attached row: Enter/d are refused");
-const attachedRoster: ManagedRow[] = [
+// A factory, not a shared array: MockManager.setTitle mutates the rows it is given,
+// so each scenario needs its own copy to stay order-independent.
+const attachedRoster = (): ManagedRow[] => [
   row({ id: "fg:1", title: "this terminal", state: "attached", activity: "active", attached: true }),
   row({ id: "s2", title: "background job", state: "completed", activity: "responded", reply: "done", elapsedMs: 5_000 }),
 ];
 // STATE_ORDER puts attached first, so it's selected initially.
-const c = runScenario(attachedRoster, [{ key: KEY.enter, label: "Enter on attached" }, { key: "d", label: "d on attached" }]);
+const c = runScenario(attachedRoster(), [{ key: KEY.enter, label: "Enter on attached" }, { key: "d", label: "d on attached" }]);
 ok("Enter on an attached row does NOT resume", !c.done.some((r) => r?.action === "resume"), JSON.stringify(c.done));
 ok("d on an attached row does NOT remove", !c.calls.some((x) => x.fn === "remove"), JSON.stringify(c.calls));
 
@@ -131,6 +133,36 @@ ok(
   "Esc clears the filter (all rows return)",
   has(d4.frames, "refactor the parser") && has(d4.frames, "uploader test") && has(d4.frames, "add retry"),
   lastFrame(d4.frames).join("\n"),
+);
+
+// --- Scenario E: rename WHILE ATTACHED goes to pi, not to the broker manager --
+// The attached row is the session you're sitting in; it has no broker to write a
+// title to (BrokerManager.setTitle early-returns for "fg:" ids), so the rename has
+// to leave through the foreground hook (pi.setSessionName in src/index.ts). A
+// regression that routed it to mgr.setTitle would look fine on screen and silently
+// drop the rename.
+console.log("[E] rename an attached row → foreground hook, not mgr.setTitle");
+const e = runScenario(attachedRoster(), [
+  { key: "r", label: "r: rename attached" },
+  { text: " here", label: "edit title" },
+  { key: KEY.enter, label: "Enter: save title" },
+]);
+ok(
+  "attached rename leaves via the foreground hook",
+  e.renamedForeground.length === 1 && e.renamedForeground[0] === "this terminal here",
+  JSON.stringify(e.renamedForeground),
+);
+ok(
+  "attached rename does NOT go to mgr.setTitle (it would be dropped)",
+  !e.calls.some((c) => c.fn === "setTitle"),
+  JSON.stringify(e.calls),
+);
+// Esc must abort cleanly: no rename escapes anywhere.
+const e2 = runScenario(attachedRoster(), [{ key: "r" }, { text: " here" }, { key: KEY.esc }]);
+ok(
+  "Esc cancels the rename — nothing is renamed",
+  e2.renamedForeground.length === 0 && !e2.calls.some((c) => c.fn === "setTitle"),
+  JSON.stringify({ fg: e2.renamedForeground, calls: e2.calls }),
 );
 
 // --- filmstrip golden (scenario A) -------------------------------------------

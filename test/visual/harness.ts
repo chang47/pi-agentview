@@ -77,6 +77,8 @@ export interface ScenarioResult {
   labels: string[];
   calls: Call[]; // what the component asked the manager to do, in order
   done: ViewResult[]; // resume/remove/create/close results emitted
+  /** Titles handed to the foreground-rename hook (real one is pi.setSessionName). */
+  renamedForeground: string[];
   mgr: MockManager;
 }
 
@@ -92,12 +94,13 @@ export function runScenario(initialRows: ManagedRow[], steps: Step[], opts: RunO
   const mgr = new MockManager(initialRows);
   if (opts.replyOk !== undefined) mgr.replyOk = opts.replyOk;
   const done: ViewResult[] = [];
+  const renamedForeground: string[] = [];
   const comp = new AgentViewComponent(
     fakeTui,
     fakeTheme,
     mgr as unknown as BrokerManager,
     (r) => done.push(r),
-    () => {},
+    (title) => renamedForeground.push(title),
   );
 
   const frames: string[][] = [];
@@ -120,7 +123,7 @@ export function runScenario(initialRows: ManagedRow[], steps: Step[], opts: RunO
   const timer = (comp as unknown as { timer?: NodeJS.Timeout }).timer;
   if (timer) clearInterval(timer);
 
-  return { frames, labels, calls: mgr.calls, done, mgr };
+  return { frames, labels, calls: mgr.calls, done, renamedForeground, mgr };
 }
 
 function keyName(k: string): string {
