@@ -535,6 +535,13 @@ export class BrokerManager {
   has(id: ManagedId): boolean {
     return this.sessions.has(id);
   }
+
+  /** Is this session's broker currently mid-run — i.e. a live turn that resuming
+   *  (which kills the broker) would ABORT? Read from the broker's own derived
+   *  state, so it reflects real agent events, checked just before we stop it. */
+  isRunning(id: ManagedId): boolean {
+    return this.sessions.get(id)?.state?.state === "working";
+  }
 }
 
 function emptyState(id: ManagedId): BrokerState {
