@@ -40,6 +40,15 @@ export interface BrokerSpec {
   model?: string; // provider/model id; inherits foreground if unset
   thinkingLevel?: string;
   initialTask?: string; // useful because Pi creates the JSONL lazily after a response
+  /**
+   * Set when the user DELIBERATELY backgrounded this session while a run was in
+   * flight. pi has no attach/detach: backgrounding tears down the foreground pi
+   * and a fresh headless worker re-opens the JSONL, dropping the live turn. On
+   * first start the broker nudges the new worker to pick the work back up
+   * (RESUME_CONTINUE_PROMPT) and CLEARS this flag — so it fires exactly once,
+   * and only for a user-initiated background, never an unexpected crash.
+   */
+  resumeOnStart?: boolean;
   createdAt: number;
 }
 
