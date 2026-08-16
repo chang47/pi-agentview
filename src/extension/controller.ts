@@ -365,7 +365,7 @@ export class BrokerManager {
    *  foreground releases the file — spawns the broker. */
   async registerExisting(
     jsonlPath: string,
-    opts: { title?: string; cwd: string; model?: string; thinkingLevel?: string; initialTask?: string },
+    opts: { title?: string; cwd: string; model?: string; thinkingLevel?: string; initialTask?: string; resumeOnStart?: boolean },
   ): Promise<ManagedId> {
     const id = `s-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     await this.specs.write({
@@ -375,6 +375,9 @@ export class BrokerManager {
       model: opts.model,
       thinkingLevel: opts.thinkingLevel,
       initialTask: opts.initialTask,
+      // Set when the session being backgrounded was mid-run: the broker that
+      // later picks up this JSONL will nudge the fresh worker to continue (once).
+      resumeOnStart: opts.resumeOnStart,
       createdAt: Date.now(),
     });
     // Fallback order: caller's title -> the session's own name/first prompt.

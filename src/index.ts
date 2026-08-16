@@ -34,6 +34,14 @@ export default function (pi: ExtensionAPI): void {
   let lastResumedId: string | undefined;
   let heartbeat: NodeJS.Timeout | undefined;
   let claimedFile: string | undefined;
+  // Whether an agent run is in flight for the session THIS host currently owns.
+  // Tracked from first-class events (agent_start .. agent_settled) so that when
+  // the user backgrounds a session we can tell the broker to auto-continue a
+  // dropped turn (BrokerSpec.resumeOnStart). agent_settled is the terminal
+  // signal (subagents emit agent_end, not agent_settled), so it stays true for
+  // the whole top-level run. Fresh per session — pi recreates this closure on
+  // every session replacement.
+  let agentRunning = false;
 
   // Derive a row title: prefer the explicit session name, else the first user
   // prompt, else a neutral fallback. NEVER cwd/username (the "iamjo" bug).
@@ -131,11 +139,19 @@ export default function (pi: ExtensionAPI): void {
       cwd: ctx.cwd,
       model: ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined,
       thinkingLevel: ctx.thinkingLevel,
+      // A DELIBERATE background of a running session: let the broker pick the
+      // dropped turn back up when it opens this JSONL (fires once, reconcile-
+      // first). An unexpected crash never reaches here, so it stays untouched.
+      resumeOnStart: agentRunning,
     });
   };
 
   pi.on("session_start", async (event, ctx) => {
     if (!isFleetHost(ctx)) return;
+
+    // A freshly-entered session has no run in flight yet (defensive: this closure
+    // is normally recreated per session, but never assume a run leaked across).
+    agentRunning = false;
 
     // Claim FIRST so reconcile can see that this terminal owns this file, and so
     // a crash between here and the first heartbeat still leaves a prunable claim.
@@ -209,7 +225,13 @@ export default function (pi: ExtensionAPI): void {
   // The title usually only becomes derivable after the first user turn.
   pi.on("agent_start", async (_event, ctx) => {
     if (!isFleetHost(ctx)) return;
+    agentRunning = true; // a turn is now in flight (see resumeOnStart above)
     await writeClaim(ctx);
+  });
+  // The top-level run has fully settled — nothing to auto-continue if backgrounded now.
+  pi.on("agent_settled", async (_event, ctx) => {
+    if (!isFleetHost(ctx)) return;
+    agentRunning = false;
   });
 
   pi.registerCommand("agents", {

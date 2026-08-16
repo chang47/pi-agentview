@@ -45,6 +45,29 @@ export const SPEC_WATCH_MS = 30_000;
  *  never displace a real one the user gave us. */
 export const PLACEHOLDER_TITLE = "session";
 
+/**
+ * Auto-continue nudge sent to a freshly-brokered worker when the user
+ * DELIBERATELY backgrounded a session mid-run (BrokerSpec.resumeOnStart).
+ *
+ * pi has no attach/detach primitive: "backgrounding" an interactive session
+ * tears down the foreground pi and a fresh headless RPC worker re-opens the
+ * JSONL — which drops the in-flight turn. This nudge asks the new worker to
+ * pick the work back up.
+ *
+ * The wording is deliberately RECONCILE-FIRST, not a bare "continue". A turn
+ * cut mid-flight may have half-run a side-effecting tool (a command, an edit)
+ * whose result never persisted; a blunt "continue" risks repeating it. Telling
+ * the model to verify current state before acting is what makes an auto-resume
+ * safe — it is the same thing a careful human does on reopening. See the
+ * conservative-interrupt invariant (SPEC §4) which this stays consistent with:
+ * only a USER-initiated background nudges; an unexpected crash stays
+ * `interrupted` and waits for a human.
+ */
+export const RESUME_CONTINUE_PROMPT =
+  "Your previous turn was interrupted before it finished (this session was moved to the background). " +
+  "Some steps may have only partly completed. First check the current state of the files and repo, " +
+  "do NOT repeat any command or edit that already ran, then continue where you left off.";
+
 export function isPlaceholderTitle(t: string | undefined): boolean {
   return !t || !t.trim() || t.trim() === PLACEHOLDER_TITLE;
 }

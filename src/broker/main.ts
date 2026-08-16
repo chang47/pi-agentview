@@ -12,7 +12,7 @@ import { acquireLock, readLock, releaseLock } from "./lock.js";
 import { BrokerSpecStore, BrokerStateStore } from "../registry.js";
 import { brokerLockPath, journalPath, socketAddress } from "../platform/paths.js";
 import { isAlive } from "../platform/pid.js";
-import { SPEC_WATCH_MS } from "../platform/constants.js";
+import { RESUME_CONTINUE_PROMPT, SPEC_WATCH_MS } from "../platform/constants.js";
 import type { BrokerState } from "../types.js";
 
 export interface BrokerArgs {
@@ -149,6 +149,24 @@ export async function runBroker(rawArgv: string[]): Promise<void> {
       rpc.write({ type: "prompt", message: spec.initialTask });
     } catch {
       /* worker not ready yet; extension can resend */
+    }
+  } else if (spec.resumeOnStart) {
+    // The user backgrounded this session while a run was in flight. pi has no
+    // attach/detach, so this fresh worker re-opened the JSONL and the in-flight
+    // turn was dropped — nudge it to pick the work back up, EXACTLY ONCE.
+    //
+    // Clear the durable flag BEFORE sending: if the broker dies here the session
+    // just waits (under-fire) instead of re-nudging on every restart — the exact
+    // trap that made re-sending initialTask a bug (REVIEW #9). This stays true to
+    // the conservative-interrupt invariant: only a USER-initiated background is
+    // auto-continued; an unexpected crash still lands in `interrupted` above and
+    // waits for a human. The prompt itself is reconcile-first (verify state, do
+    // not repeat side-effects) so an auto-resume can't blindly re-run a tool.
+    await specStore.write({ ...spec, resumeOnStart: false });
+    try {
+      rpc.write({ type: "prompt", message: RESUME_CONTINUE_PROMPT });
+    } catch {
+      /* worker not ready; flag already cleared — the user can nudge manually */
     }
   }
 

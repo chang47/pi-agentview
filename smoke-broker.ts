@@ -1,7 +1,7 @@
 // Broker smoke test. Run via jiti:  node <jiti-cli.mjs> smoke-broker.ts
 import { createConnection, type Socket } from "node:net";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,7 @@ import { IpcServer } from "./src/broker/ipc.js";
 import { BrokerSpecStore } from "./src/registry.js";
 import { socketAddress } from "./src/platform/paths.js";
 import { newNonce } from "./src/platform/pid.js";
-import { PI_CLI_ENV, STATE_DIR_ENV } from "./src/platform/constants.js";
+import { PI_CLI_ENV, RESUME_CONTINUE_PROMPT, STATE_DIR_ENV } from "./src/platform/constants.js";
 
 let pass = 0;
 let fail = 0;
@@ -238,6 +238,108 @@ console.log("\n[3] Broker subprocess e2e (spawn dist/broker.mjs, IPC, tiny promp
   c.destroy();
   await rm(tmp, { recursive: true, force: true });
   // The isolated state dir holds every broker artifact for this run; drop it whole.
+  await rm(stateTmp, { recursive: true, force: true }).catch(() => {});
+  delete process.env[STATE_DIR_ENV];
+}
+
+// ---------------------------------------------------------------------------
+// PART 4 — auto-continue on a DELIBERATE background (BrokerSpec.resumeOnStart).
+//
+// pi has no attach/detach: backgrounding an interactive session mid-run tears
+// down the foreground pi, and a fresh headless worker re-opens the JSONL — which
+// drops the in-flight turn. When the user backgrounded ON PURPOSE we stamp
+// resumeOnStart, and the broker nudges the new worker to continue. The cage:
+// fire EXACTLY ONCE (clear the flag before sending, so a crash under-fires) and
+// never on an unexpected crash (that stays `interrupted`, untouched here).
+// ---------------------------------------------------------------------------
+console.log("\n[4] Auto-continue on resumeOnStart (fires once, cleared, no re-fire)");
+{
+  const stateTmp = await mkdtemp(join(tmpdir(), "resume-state-"));
+  process.env[STATE_DIR_ENV] = stateTmp;
+
+  const id = "resume-" + Date.now();
+  const nonce = newNonce();
+  const tmp = await mkdtemp(join(tmpdir(), "resume-"));
+  const jsonl = join(tmp, "s.jsonl");
+
+  // A backgrounded EXISTING session: NO initialTask, resumeOnStart set, and (as
+  // for any never-brokered session) an empty journal.
+  const specStore = new BrokerSpecStore();
+  await specStore.write({
+    id,
+    jsonlPath: jsonl,
+    cwd: tmp,
+    model: "fake/echo",
+    resumeOnStart: true,
+    createdAt: Date.now(),
+  });
+
+  const child = spawn(process.execPath, [BROKER_MJS, "--id", id, "--nonce", nonce], {
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  const brokerErr: string[] = [];
+  child.stdout?.setEncoding("utf8").on("data", () => {});
+  child.stderr?.setEncoding("utf8").on("data", (d: string) => brokerErr.push(d));
+
+  const addr = socketAddress(id);
+  const c = await connectRetry(addr, 40, 250);
+  const inbox: any[] = [];
+  pipeInto(c, inbox);
+  c.write(JSON.stringify({ type: "hello", nonce, clientId: "fe", lastSeq: 0 }) + "\n");
+
+  // The nudge should drive a full run with NO client prompt.
+  const sawStart = await waitFor(() => inbox.some((m) => m.type === "event" && m.event?.type === "agent_start"), 30_000, 200);
+  ok("resumeOnStart triggered a run (agent_start)", sawStart, brokerErr.join("").slice(0, 300));
+  const sawSettled = await waitFor(() => inbox.some((m) => m.type === "event" && m.event?.type === "agent_settled"), 30_000, 200);
+  ok("the auto-continued run settled", sawSettled);
+
+  // The continue text actually reached the worker: fake-pi appends each prompt
+  // it receives to the JSONL, so a distinctive slice must be present.
+  const jsonlText = await readFile(jsonl, "utf8").catch(() => "");
+  ok(
+    "continue prompt was sent to the worker",
+    jsonlText.includes("moved to the background") && jsonlText.includes("do NOT repeat"),
+    `resume-prompt slice: ${RESUME_CONTINUE_PROMPT.slice(0, 40)}… | jsonl: ${jsonlText.slice(0, 120)}`,
+  );
+
+  // The cage: the durable flag is cleared, so a restart cannot re-nudge.
+  const afterSpec = await specStore.read(id);
+  ok("resumeOnStart cleared after firing", afterSpec?.resumeOnStart === false, `resumeOnStart=${afterSpec?.resumeOnStart}`);
+
+  // Shut broker #1 down cleanly.
+  c.write(JSON.stringify({ type: "acquire_lease" }) + "\n");
+  await sleep(150);
+  c.write(JSON.stringify({ type: "shutdown" }) + "\n");
+  await waitFor(() => child.exitCode !== null, 10_000, 200);
+  c.destroy();
+
+  // Restart the SAME session. Journal is now non-empty AND the flag is cleared,
+  // so the broker must NOT nudge again. The journal replays its ONE historical
+  // agent_start on connect; a re-nudge would add a SECOND — so assert <= 1.
+  const nonce2 = newNonce();
+  const child2 = spawn(process.execPath, [BROKER_MJS, "--id", id, "--nonce", nonce2], {
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  child2.stdout?.setEncoding("utf8").on("data", () => {});
+  child2.stderr?.setEncoding("utf8").on("data", () => {});
+  const c2 = await connectRetry(addr, 40, 250);
+  const inbox2: any[] = [];
+  pipeInto(c2, inbox2);
+  c2.write(JSON.stringify({ type: "hello", nonce: nonce2, clientId: "fe2", lastSeq: 0 }) + "\n");
+  await waitFor(() => inbox2.some((m) => m.type === "auth_ok"), 10_000, 100); // worker is up…
+  await sleep(2500); // …give any (buggy) re-nudge time to fire
+  const agentStarts = inbox2.filter((m) => m.type === "event" && m.event?.type === "agent_start").length;
+  ok("no re-nudge on restart (fires exactly once)", agentStarts <= 1, `agent_start count=${agentStarts}`);
+
+  c2.write(JSON.stringify({ type: "acquire_lease" }) + "\n");
+  await sleep(150);
+  c2.write(JSON.stringify({ type: "shutdown" }) + "\n");
+  await waitFor(() => child2.exitCode !== null, 10_000, 200);
+  c2.destroy();
+
+  await rm(tmp, { recursive: true, force: true });
   await rm(stateTmp, { recursive: true, force: true }).catch(() => {});
   delete process.env[STATE_DIR_ENV];
 }

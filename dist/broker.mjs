@@ -4,13 +4,14 @@ var __esm = (fn, res) => function __init() {
 };
 
 // src/platform/constants.ts
-var BROKER_CHILD_ENV, STATE_DIR_ENV, SPEC_WATCH_MS;
+var BROKER_CHILD_ENV, STATE_DIR_ENV, SPEC_WATCH_MS, RESUME_CONTINUE_PROMPT;
 var init_constants = __esm({
   "src/platform/constants.ts"() {
     "use strict";
     BROKER_CHILD_ENV = "PI_AGENTVIEW_BROKER_CHILD";
     STATE_DIR_ENV = "PI_AGENTVIEW_STATE_DIR";
     SPEC_WATCH_MS = 3e4;
+    RESUME_CONTINUE_PROMPT = "Your previous turn was interrupted before it finished (this session was moved to the background). Some steps may have only partly completed. First check the current state of the files and repo, do NOT repeat any command or edit that already ran, then continue where you left off.";
   }
 });
 
@@ -829,6 +830,12 @@ async function runBroker(rawArgv) {
   if (spec.initialTask && neverRan) {
     try {
       rpc.write({ type: "prompt", message: spec.initialTask });
+    } catch {
+    }
+  } else if (spec.resumeOnStart) {
+    await specStore.write({ ...spec, resumeOnStart: false });
+    try {
+      rpc.write({ type: "prompt", message: RESUME_CONTINUE_PROMPT });
     } catch {
     }
   }
