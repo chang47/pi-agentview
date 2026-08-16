@@ -17,7 +17,7 @@ import { AgentViewComponent, type ViewResult } from "./extension/view.js";
 import { BrokerManager } from "./extension/controller.js";
 import { ForegroundClaimStore } from "./registry.js";
 import { newNonce } from "./platform/pid.js";
-import { BROKER_CHILD_ENV, CLAIM_HEARTBEAT_MS, PLACEHOLDER_TITLE } from "./platform/constants.js";
+import { BROKER_CHILD_ENV, CLAIM_HEARTBEAT_MS, PLACEHOLDER_TITLE, RESUME_CONTINUE_PROMPT } from "./platform/constants.js";
 
 /** True when this process is an RPC worker spawned by one of our brokers. */
 const isBrokerChild = process.env[BROKER_CHILD_ENV] === "1";
@@ -267,6 +267,11 @@ export default function (pi: ExtensionAPI): void {
           return;
         }
         await backgroundCurrentIfUntracked(ctx);
+        // Was the background session mid-run? Resuming KILLS its broker (below),
+        // which aborts that in-flight turn — the mirror of the background case.
+        // Capture it BEFORE stopBrokerForResume (which drops the session), so we
+        // can re-drive the turn interactively after the switch.
+        const wasRunning = mgr.isRunning(result.id);
         // Must fully release the JSONL before pi opens it: pi's switchSession
         // opens the target SessionManager before our session_shutdown runs, so
         // there is no later chance to let go.
@@ -276,7 +281,26 @@ export default function (pi: ExtensionAPI): void {
           return;
         }
         lastResumedId = result.id;
-        await ctx.switchSession(entry.jsonlPath);
+        // On the way IN, re-send the same reconcile-first nudge so the turn the
+        // handoff just aborted picks up in the interactive session. withSession is
+        // the ONLY safe place to touch the post-switch session — a captured ctx is
+        // stale after switchSession (the exact error that broke us before). Only
+        // when the background run was actually live, so a plain look-at doesn't
+        // force a run.
+        await ctx.switchSession(
+          entry.jsonlPath,
+          wasRunning
+            ? {
+                withSession: async (rctx) => {
+                  try {
+                    await rctx.sendUserMessage(RESUME_CONTINUE_PROMPT);
+                  } catch {
+                    /* best-effort; the user can prompt manually */
+                  }
+                },
+              }
+            : undefined,
+        );
       }
     },
   });
