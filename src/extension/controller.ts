@@ -542,6 +542,19 @@ export class BrokerManager {
   isRunning(id: ManagedId): boolean {
     return this.sessions.get(id)?.state?.state === "working";
   }
+
+  /** Re-arm the resume-continue hint on an ALREADY-tracked session's durable
+   *  spec (found by its JSONL path). registerExisting only runs the FIRST time a
+   *  session is backgrounded; every later background short-circuits on isTracked,
+   *  so without this the flag — cleared by the previous continue — stays false
+   *  and only the first background of a session ever auto-continues. Idempotent;
+   *  a no-op if the session isn't tracked or its spec is gone. */
+  async markResumeOnStart(jsonlPath: string): Promise<void> {
+    const entry = (await this.registry.list()).find((e) => e.jsonlPath === jsonlPath);
+    if (!entry) return;
+    const spec = await this.specs.read(entry.id);
+    if (spec && !spec.resumeOnStart) await this.specs.write({ ...spec, resumeOnStart: true });
+  }
 }
 
 function emptyState(id: ManagedId): BrokerState {
