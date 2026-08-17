@@ -131,7 +131,15 @@ export default function (pi: ExtensionAPI): void {
   const backgroundCurrentIfUntracked = async (ctx: ExtensionContext): Promise<void> => {
     const jsonl = ctx.sessionManager.getSessionFile();
     if (!jsonl) return;
-    if (await mgr.isTracked(jsonl)) return; // already a background task
+    if (await mgr.isTracked(jsonl)) {
+      // Already a background task (a session we've backgrounded before, whose
+      // registry entry persists across resume/background cycles). registerExisting
+      // won't run again, so re-arm the resume hint HERE — otherwise resumeOnStart,
+      // cleared by the previous continue, stays false and only the FIRST
+      // background of a session ever auto-continues.
+      if (agentRunning) await mgr.markResumeOnStart(jsonl);
+      return;
+    }
     await mgr.registerExisting(jsonl, {
       // A placeholder is passed through as "no title" so registerExisting can
       // fall back to reading the JSONL, rather than freezing "session" forever.

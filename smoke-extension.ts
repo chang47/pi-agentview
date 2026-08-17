@@ -86,7 +86,7 @@ console.log("\n[BrokerManager]");
   await sleep(300);
   ok("removed session gone from rows()", !mgr.rows().some((r) => r.id === id));
 
-  await rm(tmp, { recursive: true, force: true });
+  await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
 }
 
 // --- reconcile picks up an orphaned spec -----------------------------------
@@ -108,7 +108,40 @@ console.log("\n[reconcile]");
   }
   ok("reconcile restarted broker for orphaned spec", appeared);
   await mgr.remove(orphanId);
-  await rm(tmp, { recursive: true, force: true });
+  // Windows: the just-killed broker subprocess can still hold this temp dir for a
+  // beat, so rm() throws EBUSY. It's teardown only (the assertion already passed);
+  // never let it abort the suite — same guard smoke-broker uses on its cleanup.
+  await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
+}
+
+// --- resumeOnStart re-arms on EVERY background, not just the first ----------
+// REGRESSION: the resume-continue nudge fired only the FIRST time a session was
+// backgrounded. registerExisting (which stamps resumeOnStart) is skipped once a
+// session is tracked, and the broker CLEARS the flag when it fires — so the 2nd
+// background of the same session found resumeOnStart=false and never continued.
+console.log("\n[resumeOnStart re-arm]");
+{
+  const mgr = new BrokerManager();
+  const specStore = new BrokerSpecStore();
+  const tmp = await mkdtemp(join(tmpdir(), "rearm-"));
+  const jsonl = join(tmp, "s.jsonl");
+
+  // 1st background of a running session: registerExisting stamps the flag.
+  const id = await mgr.registerExisting(jsonl, { title: "rearm", cwd: tmp, resumeOnStart: true });
+  ok("1st background stamps resumeOnStart", (await specStore.read(id))?.resumeOnStart === true);
+
+  // The broker fires the continue and clears the flag (the once-only cage).
+  const s = await specStore.read(id);
+  await specStore.write({ ...s!, resumeOnStart: false });
+
+  // 2nd background: the session is already tracked, so registerExisting is
+  // skipped — markResumeOnStart must re-arm the flag or the 2nd cycle is dead.
+  ok("session stays tracked across cycles", await mgr.isTracked(jsonl));
+  await mgr.markResumeOnStart(jsonl);
+  ok("re-background re-arms resumeOnStart (the fix)", (await specStore.read(id))?.resumeOnStart === true);
+
+  await mgr.remove(id);
+  await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
 }
 
 // --- title stays stable across attach/detach --------------------------------
@@ -170,7 +203,7 @@ console.log("\n[cleanup safety]");
   ok("GC preserves a dir containing a session JSONL", existsSync(join(dataDir, "session.jsonl")));
   ok("GC sweeps a broker-index-only orphan dir", !existsSync(orphanDir));
 
-  await rm(dataDir, { recursive: true, force: true });
+  await rm(dataDir, { recursive: true, force: true }).catch(() => undefined);
 }
 
 // --- create(): one id for both the data and the indexes --------------------
@@ -189,8 +222,8 @@ console.log("\n[cleanup safety]");
   ok("remove() preserves the session JSONL", existsSync(join(sessionDir(id), "session.jsonl")));
   ok("remove() drops the broker spec", !existsSync(brokerSpecPath(id)));
 
-  await rm(sessionDir(id), { recursive: true, force: true });
-  await rm(tmp, { recursive: true, force: true });
+  await rm(sessionDir(id), { recursive: true, force: true }).catch(() => undefined);
+  await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
 }
 
 console.log(`\n${fail === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${fail} failed`);
