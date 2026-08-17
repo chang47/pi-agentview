@@ -7,8 +7,9 @@ import { join } from "node:path";
 
 import { BrokerManager, resolveTitle } from "./src/extension/controller.js";
 import { rowsFor, groupRows, formatElapsed, statusGlyph, stateLabel } from "./src/extension/render.js";
-import { BrokerSpecStore } from "./src/registry.js";
+import { BrokerSpecStore, endsWithResumeNudge } from "./src/registry.js";
 import { brokerSpecPath, sessionDir, sessionsDir } from "./src/platform/paths.js";
+import { RESUME_CONTINUE_PROMPT } from "./src/platform/constants.js";
 import type { BrokerState, RegistryEntry } from "./src/types.js";
 
 let pass = 0;
@@ -141,6 +142,32 @@ console.log("\n[resumeOnStart re-arm]");
   ok("re-background re-arms resumeOnStart (the fix)", (await specStore.read(id))?.resumeOnStart === true);
 
   await mgr.remove(id);
+  await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
+}
+
+// --- resume dedupe: don't nudge a session already running a continue --------
+// A background session that is still "working" is running a continue we already
+// sent, so its last user turn IS the nudge. Resuming into it must NOT add a
+// second one (the reported back-to-back continue prompts) — but a session whose
+// last turn is a REAL prompt still gets re-driven.
+console.log("\n[resume dedupe: endsWithResumeNudge]");
+{
+  const tmp = await mkdtemp(join(tmpdir(), "nudge-"));
+  const j = join(tmp, "s.jsonl");
+  const userMsg = (t: string) => JSON.stringify({ type: "message", message: { role: "user", content: [{ type: "text", text: t }] } }) + "\n";
+  const asstMsg = (t: string) => JSON.stringify({ type: "message", message: { role: "assistant", content: [{ type: "text", text: t }] } }) + "\n";
+
+  // Last user turn IS the continue nudge -> true (suppress a 2nd nudge).
+  await writeFile(j, userMsg("fix the parser") + asstMsg("working…") + userMsg(RESUME_CONTINUE_PROMPT) + asstMsg("partial"), "utf8");
+  ok("nudge as last user turn -> true", (await endsWithResumeNudge(j)) === true);
+
+  // Last user turn is a real prompt (a continue earlier, then a normal turn) -> false.
+  await writeFile(j, userMsg(RESUME_CONTINUE_PROMPT) + asstMsg("done") + userMsg("now do the next thing"), "utf8");
+  ok("real last user turn -> false", (await endsWithResumeNudge(j)) === false);
+
+  // Missing/lazy JSONL -> false (never suppress on a not-yet-written file).
+  ok("missing JSONL -> false", (await endsWithResumeNudge(join(tmp, "nope.jsonl"))) === false);
+
   await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
 }
 

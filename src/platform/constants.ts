@@ -63,8 +63,14 @@ export const PLACEHOLDER_TITLE = "session";
  * only a USER-initiated background nudges; an unexpected crash stays
  * `interrupted` and waits for a human.
  */
+/** Distinctive phrase embedded in RESUME_CONTINUE_PROMPT. Lets us recognise a
+ *  nudge already sitting as the last user turn in a session's transcript, so
+ *  resuming into a session that's ALREADY running a continue doesn't add a
+ *  second, duplicate nudge (the back-to-back continue prompts). */
+export const RESUME_NUDGE_MARKER = "moved to the background";
+
 export const RESUME_CONTINUE_PROMPT =
-  "Your previous turn was interrupted before it finished (this session was moved to the background). " +
+  `Your previous turn was interrupted before it finished (this session was ${RESUME_NUDGE_MARKER}). ` +
   "Some steps may have only partly completed. First check the current state of the files and repo, " +
   "do NOT repeat any command or edit that already ran, then continue where you left off.";
 
