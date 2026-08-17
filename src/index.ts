@@ -15,7 +15,7 @@ import { type ExtensionAPI, type ExtensionCommandContext, type ExtensionContext 
 import { AgentsEditor } from "./extension/editor.js";
 import { AgentViewComponent, type ViewResult } from "./extension/view.js";
 import { BrokerManager } from "./extension/controller.js";
-import { ForegroundClaimStore } from "./registry.js";
+import { ForegroundClaimStore, endsWithResumeNudge } from "./registry.js";
 import { newNonce } from "./platform/pid.js";
 import { BROKER_CHILD_ENV, CLAIM_HEARTBEAT_MS, PLACEHOLDER_TITLE, RESUME_CONTINUE_PROMPT } from "./platform/constants.js";
 
@@ -280,6 +280,14 @@ export default function (pi: ExtensionAPI): void {
         // Capture it BEFORE stopBrokerForResume (which drops the session), so we
         // can re-drive the turn interactively after the switch.
         const wasRunning = mgr.isRunning(result.id);
+        // Dedupe: a background session that is still "working" is — by
+        // construction — running a continue we already sent (backgrounding aborts
+        // the original turn; only the continue or an initialTask runs). So its
+        // last user turn already IS the nudge, and re-sending one on the way in
+        // just duplicates it (the back-to-back continue prompts). Suppress it in
+        // that case; only nudge when resuming into a live turn that is NOT already
+        // a continue (e.g. a created session mid initialTask).
+        const shouldNudge = wasRunning && !(await endsWithResumeNudge(entry.jsonlPath));
         // Must fully release the JSONL before pi opens it: pi's switchSession
         // opens the target SessionManager before our session_shutdown runs, so
         // there is no later chance to let go.
@@ -289,15 +297,13 @@ export default function (pi: ExtensionAPI): void {
           return;
         }
         lastResumedId = result.id;
-        // On the way IN, re-send the same reconcile-first nudge so the turn the
-        // handoff just aborted picks up in the interactive session. withSession is
-        // the ONLY safe place to touch the post-switch session — a captured ctx is
-        // stale after switchSession (the exact error that broke us before). Only
-        // when the background run was actually live, so a plain look-at doesn't
-        // force a run.
+        // On the way IN, re-send the reconcile-first nudge so the turn the handoff
+        // just aborted picks up in the interactive session. withSession is the ONLY
+        // safe place to touch the post-switch session — a captured ctx is stale
+        // after switchSession (the exact error that broke us before).
         await ctx.switchSession(
           entry.jsonlPath,
-          wasRunning
+          shouldNudge
             ? {
                 withSession: async (rctx) => {
                   try {
