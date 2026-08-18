@@ -15,7 +15,7 @@ import { type ExtensionAPI, type ExtensionCommandContext, type ExtensionContext 
 import { AgentsEditor } from "./extension/editor.js";
 import { AgentViewComponent, type ViewResult } from "./extension/view.js";
 import { BrokerManager } from "./extension/controller.js";
-import { ForegroundClaimStore, endsWithResumeNudge } from "./registry.js";
+import { ForegroundClaimStore } from "./registry.js";
 import { newNonce } from "./platform/pid.js";
 import { BROKER_CHILD_ENV, CLAIM_HEARTBEAT_MS, PLACEHOLDER_TITLE, RESUME_CONTINUE_PROMPT } from "./platform/constants.js";
 
@@ -280,14 +280,14 @@ export default function (pi: ExtensionAPI): void {
         // Capture it BEFORE stopBrokerForResume (which drops the session), so we
         // can re-drive the turn interactively after the switch.
         const wasRunning = mgr.isRunning(result.id);
-        // Dedupe: a background session that is still "working" is — by
-        // construction — running a continue we already sent (backgrounding aborts
-        // the original turn; only the continue or an initialTask runs). So its
-        // last user turn already IS the nudge, and re-sending one on the way in
-        // just duplicates it (the back-to-back continue prompts). Suppress it in
-        // that case; only nudge when resuming into a live turn that is NOT already
-        // a continue (e.g. a created session mid initialTask).
-        const shouldNudge = wasRunning && !(await endsWithResumeNudge(entry.jsonlPath));
+        // ALWAYS re-nudge when the session was mid-run. stopBrokerForResume
+        // aborts the in-flight turn no matter what it was running, so the
+        // "already running our continue" reasoning from the old dedupe never
+        // held on this path: suppressing the nudge dropped the aborted work
+        // with nothing to re-drive it (the reported "resumed session without a
+        // nudge" stall). The reconcile-first prompt makes a re-nudge safe even
+        // when the last user turn was already a nudge — worst case it reads as
+        // a duplicate continue, never as lost work.
         // Must fully release the JSONL before pi opens it: pi's switchSession
         // opens the target SessionManager before our session_shutdown runs, so
         // there is no later chance to let go.
@@ -303,7 +303,7 @@ export default function (pi: ExtensionAPI): void {
         // after switchSession (the exact error that broke us before).
         await ctx.switchSession(
           entry.jsonlPath,
-          shouldNudge
+          wasRunning
             ? {
                 withSession: async (rctx) => {
                   try {
