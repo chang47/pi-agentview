@@ -8,7 +8,7 @@ import { readFile, mkdir, readdir, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { atomicWrite } from "./platform/atomic.js";
 import { isAlive } from "./platform/pid.js";
-import { CLAIM_TTL_MS, RESUME_NUDGE_MARKER } from "./platform/constants.js";
+import { CLAIM_TTL_MS } from "./platform/constants.js";
 import {
   registryPath,
   foregroundClaimsPath,
@@ -346,39 +346,3 @@ export async function titleFromJsonl(jsonlPath: string): Promise<string | undefi
   return picked ? clip(picked) : undefined;
 }
 
-/**
- * True when the LAST user turn in a session JSONL is our resume-continue nudge —
- * i.e. a "continue" is already the active instruction. A background session that
- * is still working is, by construction, running a continue we sent; resuming
- * into it and sending ANOTHER continue just duplicates it (the back-to-back
- * nudges). Used to suppress the resume-into nudge in exactly that case.
- */
-export async function endsWithResumeNudge(jsonlPath: string): Promise<boolean> {
-  let raw: string;
-  try {
-    raw = await readFile(jsonlPath, "utf8");
-  } catch {
-    return false;
-  }
-  let lastUser: string | undefined;
-  for (const line of raw.split("\n")) {
-    if (!line.trim()) continue;
-    let e: { type?: string; message?: { role?: string; content?: unknown } };
-    try {
-      e = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (e.type === "message" && e.message?.role === "user") {
-      const c = e.message.content;
-      const text =
-        typeof c === "string"
-          ? c
-          : Array.isArray(c)
-            ? c.map((b) => ((b as { type?: string; text?: string }).type === "text" ? (b as { text?: string }).text ?? "" : "")).join("")
-            : "";
-      if (text.trim()) lastUser = text;
-    }
-  }
-  return lastUser !== undefined && lastUser.includes(RESUME_NUDGE_MARKER);
-}
