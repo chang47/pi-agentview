@@ -133,6 +133,27 @@ ok(
   lastFrame(d4.frames).join("\n"),
 );
 
+// --- Scenario E: every hotkey is discoverable, even on the (default) attached row ---------
+console.log("[E] footer lists every hotkey; attached row keeps n/r/filter; narrow width wraps");
+const footer = (frames: string[][]): string => lastFrame(frames).slice(-3).join("\n");
+const e1 = runScenario(roster(), []);
+for (const k of ["Space peek/reply", "Enter resume", "n new", "d remove", "r rename", "/ filter"]) {
+  ok(`normal row footer shows "${k}"`, footer(e1.frames).includes(k), footer(e1.frames));
+}
+const e2 = runScenario(attachedRoster, []); // attached row is selected by default
+for (const k of ["n new", "r rename", "/ filter"]) {
+  ok(`attached row footer still shows "${k}"`, footer(e2.frames).includes(k), footer(e2.frames));
+}
+ok("attached row footer explains why reply/resume are gone", footer(e2.frames).includes("can't resume, reply or remove"), footer(e2.frames));
+const e3 = runScenario(roster(), [], { width: 40 });
+const stripAnsi = (l: string): string => l.replace(/\x1b\[[0-9;]*m/g, "");
+ok(
+  "narrow terminal: hint wraps, no key clipped",
+  ["Space peek/reply", "r rename", "Esc close"].every((k) => lastFrame(e3.frames).some((l) => l.includes(k))) &&
+    lastFrame(e3.frames).slice(-3).every((l) => stripAnsi(l).length <= 40), // footer lines only
+  lastFrame(e3.frames).join("\n"),
+);
+
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });
 await mkdir(ARTIFACT_DIR, { recursive: true });
