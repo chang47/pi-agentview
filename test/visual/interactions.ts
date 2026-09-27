@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 import type { ManagedRow } from "../../src/extension/render.js";
 import { runScenario, KEY, type Step } from "./harness.js";
-import { SAMPLE_TRANSCRIPT } from "./fixtures.js";
+import { MARKDOWN_TRANSCRIPT, SAMPLE_TRANSCRIPT } from "./fixtures.js";
 import { ansiFramesToAnimatedSvg } from "./ansi-to-svg.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -53,20 +53,21 @@ const roster = (): ManagedRow[] => [
 
 const lastFrame = (frames: string[][]): string[] => frames[frames.length - 1];
 
-// --- Scenario A: navigate → peek → reply → send → rename → save --------------
-console.log("[A] navigate → peek → reply → rename");
+// --- Scenario A: navigate → focus (Space) → reply → send → back → rename → save --
+console.log("[A] navigate → Space focus → reply → rename");
 const stepsA: Step[] = [
   { key: KEY.down, label: "↓ select completed" },
-  { key: KEY.space, label: "Space: peek" },
+  { key: KEY.space, label: "Space: open focus pane" },
   { text: "ship it", label: 'type "ship it"' },
   { key: KEY.enter, label: "Enter: send reply" },
-  { key: KEY.esc, label: "Esc: close peek" },
+  { key: KEY.esc, label: "Esc: back to the list" },
   { key: KEY.down, label: "↓ select idle" },
   { key: "r", label: "r: rename" },
   { text: " (renamed)", label: "edit title" },
   { key: KEY.enter, label: "Enter: save title" },
 ];
-const a = runScenario(roster(), stepsA);
+const a = runScenario(roster(), stepsA, { transcripts: { s2: SAMPLE_TRANSCRIPT }, height: 16 });
+ok("Space opens the focus pane (peek is gone)", a.frames[2].some((l) => l.includes("Session ▸")), a.frames[2].join("\n"));
 
 ok(
   "reply delivered to the selected (completed) session",
@@ -87,7 +88,7 @@ const b = runScenario(roster(), [{ key: KEY.down }, { key: KEY.space }, { text: 
 });
 ok("sendReply was still attempted", b.calls.some((c) => c.fn === "sendReply" && c.args[0] === "s2"), JSON.stringify(b.calls));
 ok(
-  "peek shows the delivery-error line (not a false success)",
+  "focus pane shows the delivery-error line (not a false success)",
   lastFrame(b.frames).some((ln) => ln.includes("no live broker")) &&
     !lastFrame(b.frames).some((ln) => ln.includes("sent ✓")),
   lastFrame(b.frames).join("\n"),
@@ -160,6 +161,18 @@ const f6 = runScenario(attachedRoster, [{ key: KEY.right }, { text: "hi" }, { ke
 ok("attached session opens read-only (no reply sent)", text(f6.frames).includes("read-only") && !f6.calls.some((c) => c.fn === "sendReply"), JSON.stringify(f6.calls));
 const f7 = runScenario(roster(), [{ key: KEY.right }], { height: 14 });
 ok("a session with no messages yet says so", text(f7.frames).includes("No messages yet"), text(f7.frames));
+const f8 = runScenario(roster(), [{ key: KEY.down }, { key: KEY.right }], { transcripts: { s2: MARKDOWN_TRANSCRIPT }, height: 30 });
+const f8t = text(f8.frames);
+ok(
+  "agent markdown is rendered, not shown raw (no ## / ** / table pipes; table is box-drawn)",
+  f8t.includes("Root cause") && !f8t.includes("## Root") && !f8t.includes("**every**") && !f8t.includes("| --- |") && f8t.includes("│ before │"),
+  f8t,
+);
+const awaitRoster: ManagedRow[] = [
+  row({ id: "s3", title: "migrate the config loader", state: "awaiting_input", activity: "Allow running `rm -rf dist`?" }),
+];
+const f9 = runScenario(awaitRoster, [{ key: KEY.right }], { height: 14 });
+ok("awaiting-input session shows the pending question in the focus pane", text(f9.frames).includes("waiting: Allow running"), text(f9.frames));
 
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });

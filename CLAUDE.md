@@ -46,7 +46,7 @@ did X wrong": add a scenario to `test/visual/interactions.ts` — a roster + a l
 (`{key}` / `{text}` / `{rows}`) — then read back `frames` (what rendered at each step) and
 `calls` (what the component asked the manager to do: `sendReply`/`setTitle`/`remove`/resume). No
 broker, no model — a bug becomes a small deterministic repro you can look at. `runScenario` is
-the reusable entry point; `interactions.ts` shows navigate/peek/reply, the delivery-failure path,
+the reusable entry point; `interactions.ts` shows navigate/focus/reply, the delivery-failure path,
 and the attached-row guard as examples.
 
 **GOTCHA — rebuild the broker bundle after touching bundled code.** `dist/broker.mjs` is a

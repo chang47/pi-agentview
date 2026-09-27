@@ -1,16 +1,16 @@
-// Agent View component (rendered via ctx.ui.custom). A session switcher/monitor
-// with a peek panel that doubles as a reply input (type + Enter to send a
-// follow-up to that background session, no attach).
-// Keys: ↑↓/j/k select · Space peek (then type to reply, Enter sends) ·
-//       → focus (full conversation, scroll, reply; Esc/← back) ·
-//       Enter resume · n new · d remove · Esc close
+// Agent View component (rendered via ctx.ui.custom). A session switcher/monitor;
+// → (or Space) opens a session's focus pane — its full conversation, scrollable,
+// with a reply line (type + Enter sends a follow-up to that background session,
+// no attach).
+// Keys: ↑↓/j/k select · →/Space focus (scroll, reply; Esc/← back) ·
+//       Enter resume · n new · d remove · r rename · / filter · Esc close
 
-import { type TUI } from "@earendil-works/pi-tui";
+import { type MarkdownTheme, type TUI } from "@earendil-works/pi-tui";
 import { type Theme } from "@earendil-works/pi-coding-agent";
 import type { BrokerManager } from "./controller.js";
 import { groupRows, filterRows, type ManagedRow } from "./render.js";
 import { renderFrame } from "./frame.js";
-import { renderFocus, maxFocusScroll, type FocusUi } from "./focus.js";
+import { renderFocus, maxFocusScroll, markdownTheme, type FocusUi } from "./focus.js";
 import { loadTranscript, type TranscriptItem } from "./transcript.js";
 import type { ManagedId } from "../types.js";
 
@@ -45,7 +45,6 @@ export class AgentViewComponent {
   private selectedId: ManagedId | undefined;
   private timer: NodeJS.Timeout | undefined;
   private cachedRows: ManagedRow[] = [];
-  private peekOpen = false;
   private replyBuf = "";
   private justSent = false; // brief "sent ✓" flash after Enter
   private sendError: string | undefined; // shown when a reply could not be delivered
@@ -59,6 +58,7 @@ export class AgentViewComponent {
   private focusItems: TranscriptItem[] | undefined; // undefined = still loading
   private focusLoadSeq = 0; // drops a stale load that finishes after the user moved on
   private loader: TranscriptLoader;
+  private md: MarkdownTheme;
 
   constructor(
     private tui: TUI,
@@ -69,6 +69,12 @@ export class AgentViewComponent {
     private opts: AgentViewOptions = {},
   ) {
     this.loader = opts.loadTranscript ?? ((row) => loadTranscript(row.jsonlPath));
+    const t = this.theme as Partial<Record<"bold" | "italic" | "underline", (s: string) => string>>;
+    this.md = markdownTheme((n, s) => this.color(n, s), {
+      bold: t.bold?.bind(this.theme),
+      italic: t.italic?.bind(this.theme),
+      underline: t.underline?.bind(this.theme),
+    });
     this.refresh();
     this.timer = setInterval(() => {
       this.mgr
@@ -188,20 +194,15 @@ export class AgentViewComponent {
     if (focused) {
       const ui = this.focusUi();
       const h = this.height();
-      this.focusScroll = Math.min(this.focusScroll, maxFocusScroll(this.focusItems ?? [], width, h, ui));
-      return renderFocus(focused, this.focusItems ?? [], width, h, { ...ui, scrollFromBottom: this.focusScroll }, (n, s) =>
-        this.color(n, s),
-      );
+      const items = this.focusItems ?? [];
+      this.focusScroll = Math.min(this.focusScroll, maxFocusScroll(focused, items, width, h, ui, this.md));
+      return renderFocus(focused, items, width, h, { ...ui, scrollFromBottom: this.focusScroll }, (n, s) => this.color(n, s), this.md);
     }
     return renderFrame(
       this.visibleRows(),
       width,
       {
         selectedId: this.selectedId,
-        peekOpen: this.peekOpen,
-        replyBuf: this.replyBuf,
-        justSent: this.justSent,
-        sendError: this.sendError,
         renameMode: this.renameMode,
         renameBuf: this.renameBuf,
         filterMode: this.filterMode,
@@ -224,11 +225,6 @@ export class AgentViewComponent {
       this.handleFocusInput(data);
       return;
     }
-    // Inside the peek panel: typing builds a reply.
-    if (this.peekOpen) {
-      this.handlePeekInput(data);
-      return;
-    }
 
     const rows = this.flatRows();
     const idx = rows.findIndex((r) => r.id === this.selectedId);
@@ -240,14 +236,8 @@ export class AgentViewComponent {
     } else if (data === DOWN || data === "j") {
       if (idx >= 0 && idx < rows.length - 1) this.selectedId = rows[idx + 1]!.id;
       this.tui.requestRender();
-    } else if (data === RIGHT || data === RIGHT_APP) {
+    } else if (data === RIGHT || data === RIGHT_APP || data === " ") {
       if (sel) this.openFocus();
-    } else if (data === " ") {
-      this.peekOpen = true;
-      this.replyBuf = "";
-      this.justSent = false;
-      this.sendError = undefined;
-      this.tui.requestRender();
     } else if (data === "\r" || data === "\n") {
       // Foreground rows are the interactive session you're in — not resumable.
       if (this.selectedId && !sel?.attached) this.close({ action: "resume", id: this.selectedId });
@@ -307,69 +297,6 @@ export class AgentViewComponent {
     } else if (data.length >= 1 && data.charCodeAt(0) >= 32 && !data.startsWith("\x1b")) {
       this.filterQuery += data;
       this.refresh();
-      this.tui.requestRender();
-    }
-  }
-
-  private handlePeekInput(data: string): void {
-    // Any further keystroke dismisses a delivery error.
-    if (data !== "\r" && data !== "\n") this.sendError = undefined;
-    const rows = this.flatRows();
-    const move = (delta: number) => {
-      const idx = rows.findIndex((r) => r.id === this.selectedId);
-      const next = rows[idx + delta];
-      if (next) {
-        this.selectedId = next.id;
-        this.replyBuf = ""; // don't send A's reply to B
-        this.justSent = false;
-      }
-      this.tui.requestRender();
-    };
-
-    if (data === UP) return move(-1);
-    if (data === DOWN) return move(1);
-    if (data === BACKSPACE || data === BACKSPACE_ALT) {
-      this.replyBuf = this.replyBuf.slice(0, -1);
-      this.justSent = false;
-      this.tui.requestRender();
-      return;
-    }
-    if (data === "\r" || data === "\n") {
-      const text = this.replyBuf.trim();
-      if (text && this.selectedId) {
-        // Only claim success when the reply actually reached a broker. This used
-        // to flash "sent ✓" unconditionally — including for attached rows and
-        // unreachable brokers, where the message went nowhere.
-        this.deliverReply(text);
-      } else {
-        this.peekOpen = false; // Enter on empty reply closes peek
-      }
-      this.tui.requestRender();
-      return;
-    }
-    if (data === "\x1b") {
-      this.peekOpen = false;
-      this.replyBuf = "";
-      this.justSent = false;
-      this.tui.requestRender();
-      return;
-    }
-    if (data === " ") {
-      // Space appends to the reply; if empty, treat as "close peek".
-      if (this.replyBuf.length === 0) {
-        this.peekOpen = false;
-        this.tui.requestRender();
-      } else {
-        this.replyBuf += " ";
-        this.justSent = false;
-        this.tui.requestRender();
-      }
-      return;
-    }
-    // Printable character -> append to reply buffer.
-    if (data.length >= 1 && data.charCodeAt(0) >= 32 && !data.startsWith("\x1b")) {
-      this.replyBuf += data;
-      this.justSent = false;
       this.tui.requestRender();
     }
   }

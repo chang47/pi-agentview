@@ -37,7 +37,7 @@ A **fleet dashboard extension** for the [pi coding agent](https://github.com/ear
 
 **Goals**
 - Background sessions that keep running with no terminal attached; recoverable with zero data loss on reopen (parity with CC's *actual* capability — CC also doesn't survive reboot).
-- One dashboard showing every session, with live status, the model's reply, peek/reply, rename.
+- One dashboard showing every session, with live status, the model's reply, a focus pane (read + reply), rename.
 - Full native pi UX (all slash commands) when you're "in" a session.
 - One package, identical on Windows/POSIX.
 
@@ -141,7 +141,7 @@ src/
 │   └── lock.ts               (30) lockfile {pid, nonce, startedAt}
 └── extension/
     ├── editor.ts             (20) AgentsEditor: Left-Arrow on empty buffer → submits /agents via real callback
-    ├── view.ts              (442) AgentViewComponent: grouped rows, reply preview, peek/reply, focus pane, inline rename, in-place delete, "attached" markers
+    ├── view.ts              (442) AgentViewComponent: grouped rows, reply preview, focus pane (read + reply), inline rename, in-place delete, "attached" markers
     ├── focus.ts             (120) PURE focus-pane renderer: one session's conversation at terminal height, scroll window, pinned reply line
     ├── transcript.ts         (92) session JSONL → readable items (user / assistant text / one-line tool calls); drops thinking + tool output
     ├── controller.ts        (292) BrokerManager: reconcile/tick/create/registerExisting/stopBrokerForResume/returnToPool/remove/sendReply/setTitle/isTracked/isAttachedElsewhere
@@ -160,8 +160,7 @@ smoke.ts / smoke-broker.ts / smoke-extension.ts   test suites (12 / 25 / 13 test
 - **Create (`n` in view):** dialogs → `mgr.create` (spec+registry+spawn broker+connect IPC); optional initial task fires as first prompt.
 - **Resume (`Enter`):** guard `isAttachedElsewhere` (refuse if another live terminal owns it) → `backgroundCurrentIfUntracked` (save the session we're leaving) → `stopBrokerForResume(target)` (release target JSONL) → `ctx.switchSession(target.jsonl)`. Next `session_start` reconciles → restarts the broker for the session we left.
 - **Auto-background on swap (`/new` or resume):** `session_before_switch` → if leaving session's JSONL untracked, `registerExisting` (durable write only). Reconcile spawns the broker once the file is free.
-- **Reply-from-peek (`Space`, type, `Enter`):** view → `mgr.sendReply` → IPC `rpc` → broker forwards `follow_up` (if busy) or `prompt` (if idle).
-- **Focus pane (`→`):** view reads the row's session JSONL (`transcript.ts`, re-read on every 1 s tick so replies appear live) and renders it full height (`focus.ts`). `↑`/`↓`/`PgUp`/`PgDn` scroll the conversation (never the selection), typing + `Enter` goes through the same `mgr.sendReply` path as peek, `Esc`/`←` returns to the list with the row still selected (`←` is ignored while a reply is half-typed). Attached rows open read-only.
+- **Focus pane (`→` or `Space`) — replaced peek:** view reads the row's session JSONL (`transcript.ts`, re-read on every 1 s tick so replies appear live) and renders it full height (`focus.ts`). `↑`/`↓`/`PgUp`/`PgDn` scroll the conversation (never the selection), typing + `Enter` goes through `mgr.sendReply` → IPC `rpc` → broker forwards `follow_up` (if busy) or `prompt` (if idle), `Esc`/`←` returns to the list with the row still selected (`←` is ignored while a reply is half-typed). Attached rows open read-only. Agent replies render as markdown via pi-tui's `Markdown` in the host theme's `md*` colors (cached per width+text; no syntax highlighting). The footer shows what the transcript can't: the pending dialog question (`awaiting_input`) or the running tool (`working`).
 - **Rename (`r`):** background → registry title; attached → `pi.setSessionName`.
 - **Attached tracking:** every `session_start` writes/refreshes a claim keyed by **jsonlPath** (matches `session_shutdown` removal key — an earlier bug keyed by sessionId UUID and claims never cleared).
 - **Recovery (heartbeat):** `tick()` (1 s while view open + on reconcile) prunes claims whose `ownerPid` died → session returns to background, reconnectable.
@@ -197,7 +196,7 @@ Node built-ins abstract most differences; ~5 seams selected by `process.platform
 1. **Stale attached claims from dead terminals aren't always cleaned up** (user currently sees 3). Likely cause: **PID reuse** (dead terminal's PID recycled by an unrelated process → `isAlive` true → not pruned), OR `tick` only runs while a dashboard is open / on `session_start` (no background sweep). User says "OK for now." **Fix: add process start-time to claims (secondary guard); add a startup sweep.**
 2. **PID-reuse edge** (same root): a dead owner can look alive briefly. Roadmap: start-time guard.
 3. **No GC of removed sessions' state dirs** — 29 dirs accumulated. `remove()` clears registry+spec but leaves the session dir.
-4. **No inline dialog-answering** — peek reply sends a follow-up; can't pick a `select`/`confirm` choice.
+4. **No inline dialog-answering** — a focus-pane reply sends a follow-up; can't pick a `select`/`confirm` choice.
 5. **No live activity on attached rows** — static marker only (the main TUI already shows the local session's activity).
 6. **Resume handoff race** — `stopBrokerForResume` → `switchSession`: brief ownership-transfer window; Windows file-lock release timing is unverified for tight sequences.
 7. **Shared state files across instances** (`registry.json`, `foreground-claims.json`) — atomic writes mitigate, but multi-writer last-write-wins could lose an update. No file lock.
