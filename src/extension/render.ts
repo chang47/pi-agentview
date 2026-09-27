@@ -7,14 +7,14 @@ export interface ManagedRow {
   title: string;
   state: SessionState;
   activity: string;
-  /** The model's latest reply text (when available) — shown in completed rows' preview. */
+  /** The model's latest reply text (when available) — shown for completed rows + peek. */
   reply?: string;
   /** ms since the semantic state transition (run start / completion / wait). */
   elapsedMs: number | undefined;
   needsInput: boolean;
   /** Session JSONL — used to dedup foreground vs broker rows for the same file. */
   jsonlPath: string;
-  /** True for sessions currently opened in a terminal (display + read-only focus; no resume/remove). */
+  /** True for sessions currently opened in a terminal (display + peek only; no resume/remove). */
   attached?: boolean;
 }
 
