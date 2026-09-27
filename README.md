@@ -15,7 +15,7 @@ Agent View   working=2  completed=1  attached=1
  Attached (1)
    ▶ session 3 — C:\Users\me\project
 ──────────────────────────────────────────────────────────────
- ↑↓ select · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close
+ ↑↓ select · → open · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close
 ```
 
 ## Install
@@ -39,6 +39,8 @@ Then start `pi` and press **Left Arrow** on an empty prompt (or run `/agents`).
 - **Background sessions keep running** with no terminal attached — they survive closing your terminal (not a reboot; Claude Code doesn't either).
 - **One dashboard** for every session: live status, what the model last said, elapsed time.
 - **Peek and reply** without leaving the dashboard — press `Space`, type, `Enter`.
+- **Focus a session** (`→`) to read its whole conversation — your messages, the agent's replies, one line per
+  tool call — full height and scrollable, reply from there, then `Esc`/`←` back to the list.
 - **Resume** any session into your terminal with the *full* native pi UX — every slash command, the real editor, `/model`, proper tool rendering.
 - **Rename** rows (`r`), **remove** them (`d` — your conversation JSONL is always preserved).
 
@@ -47,6 +49,7 @@ Then start `pi` and press **Left Arrow** on an empty prompt (or run `/agents`).
 | Key | Action |
 |---|---|
 | `↑` `↓` / `j` `k` | select a row |
+| `→` | focus — the session's full conversation: `↑` `↓` / `PgUp` `PgDn` scroll, type + `Enter` to reply, `Esc` / `←` back (read-only for an attached session) |
 | `Space` | peek — then type and press `Enter` to send a follow-up |
 | `Enter` | resume that session in this terminal |
 | `n` | create a new background session |

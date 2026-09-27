@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 
 import type { ManagedRow } from "../../src/extension/render.js";
 import { runScenario, KEY, type Step } from "./harness.js";
+import { SAMPLE_TRANSCRIPT } from "./fixtures.js";
 import { ansiFramesToAnimatedSvg } from "./ansi-to-svg.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -132,6 +133,33 @@ ok(
   has(d4.frames, "refactor the parser") && has(d4.frames, "uploader test") && has(d4.frames, "add retry"),
   lastFrame(d4.frames).join("\n"),
 );
+
+// --- Scenario F: focus pane — read the whole reply, scroll without switching, reply, go back ---
+console.log("[F] → focus: read the conversation, scroll, reply, Esc back to the list");
+const fx = { transcripts: { s2: SAMPLE_TRANSCRIPT }, height: 14 };
+const text = (frames: string[][]): string => lastFrame(frames).join("\n");
+const f1 = runScenario(roster(), [{ key: KEY.down }, { key: KEY.right }], fx);
+ok("→ opens the focus pane for the selected session", text(f1.frames).includes("Session ▸") && text(f1.frames).includes("fix the flaky uploader test"), text(f1.frames));
+ok("focus pane shows the agent's full latest reply", text(f1.frames).includes("20 runs in a row"), text(f1.frames));
+ok("focus pane is sized to the terminal height", lastFrame(f1.frames).length === 13, `lines=${lastFrame(f1.frames).length}`);
+const f2 = runScenario(roster(), [{ key: KEY.down }, { key: KEY.right }, { key: KEY.up }, { key: KEY.up }, { key: KEY.up }], fx);
+ok("↑ scrolls the conversation up (older lines + 'more below')", text(f2.frames).includes("more lines below") && text(f2.frames).includes("Reproduced it"), text(f2.frames));
+const f3 = runScenario(
+  roster(),
+  [{ key: KEY.down }, { key: KEY.right }, { key: KEY.up }, { key: KEY.up }, { text: "ship it" }, { key: KEY.enter }, { key: KEY.esc }],
+  fx,
+);
+ok("scrolling never switches sessions: the reply goes to the focused one", f3.calls.some((c) => c.fn === "sendReply" && c.args[0] === "s2" && c.args[1] === "ship it"), JSON.stringify(f3.calls));
+ok("after Enter the pane shows 'sent ✓'", f3.frames[f3.frames.length - 2].some((l) => l.includes("sent ✓")), f3.frames[f3.frames.length - 2].join("\n"));
+ok("Esc returns to Agent View with the same session selected", text(f3.frames).includes("Agent View") && lastFrame(f3.frames).some((l) => l.includes("▸") && l.includes("fix the flaky uploader test")), text(f3.frames));
+const f4 = runScenario(roster(), [{ key: KEY.down }, { key: KEY.right }, { text: "half" }, { key: KEY.left }], fx);
+ok("← with a half-typed reply stays put (doesn't drop your text)", text(f4.frames).includes("Session ▸") && text(f4.frames).includes("half"), text(f4.frames));
+const f5 = runScenario(roster(), [{ key: KEY.down }, { key: KEY.right }, { key: KEY.left }], fx);
+ok("← with an empty reply goes back to the list", text(f5.frames).includes("Agent View"), text(f5.frames));
+const f6 = runScenario(attachedRoster, [{ key: KEY.right }, { text: "hi" }, { key: KEY.enter }], { transcripts: { "fg:1": SAMPLE_TRANSCRIPT }, height: 14 });
+ok("attached session opens read-only (no reply sent)", text(f6.frames).includes("read-only") && !f6.calls.some((c) => c.fn === "sendReply"), JSON.stringify(f6.calls));
+const f7 = runScenario(roster(), [{ key: KEY.right }], { height: 14 });
+ok("a session with no messages yet says so", text(f7.frames).includes("No messages yet"), text(f7.frames));
 
 // --- filmstrip golden (scenario A) -------------------------------------------
 const svg = ansiFramesToAnimatedSvg(a.frames, { title: "Agent View — interaction flow", msPerFrame: 1300 });

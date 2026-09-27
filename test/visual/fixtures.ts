@@ -4,6 +4,8 @@
 
 import type { ManagedRow } from "../../src/extension/render.js";
 import type { FrameUi } from "../../src/extension/frame.js";
+import type { FocusUi } from "../../src/extension/focus.js";
+import type { TranscriptItem } from "../../src/extension/transcript.js";
 
 export interface Fixture {
   name: string;
@@ -106,4 +108,35 @@ export const FIXTURES: Fixture[] = [
     rows: [working],
     ui: ui({ selectedId: "s1", filterMode: true, filterQuery: "s:working" }),
   },
+];
+
+// --- Focus pane (→ on a row): one session's conversation, scrollable, with a reply line ------
+export interface FocusFixture {
+  name: string;
+  width: number;
+  height: number;
+  row: ManagedRow;
+  items: TranscriptItem[];
+  ui: FocusUi;
+}
+
+export const SAMPLE_TRANSCRIPT: TranscriptItem[] = [
+  { kind: "user", text: "The uploader test is flaky on CI. Find out why and fix it." },
+  { kind: "tool", name: "bash", summary: "npm test -- uploader --repeat 20" },
+  { kind: "assistant", text: "Reproduced it: 3 of 20 runs time out. Looking at the retry wrapper next." },
+  { kind: "tool", name: "read", summary: "src/upload/retry.ts" },
+  { kind: "tool", name: "edit", summary: "src/upload/retry.ts" },
+  {
+    kind: "assistant",
+    text:
+      "Found it. The retry wrapper caught every error, including the timeout, so a slow upload retried forever until the test runner killed it.\n\nI changed it to rethrow timeouts and only retry on network errors. All 42 tests pass now, 20 runs in a row.",
+  },
+];
+
+const FOCUS_UI: FocusUi = { scrollFromBottom: 0, replyBuf: "", justSent: false, readOnly: false, loading: false };
+
+export const FOCUS_FIXTURES: FocusFixture[] = [
+  { name: "focus-conversation", width: 76, height: 24, row: completed, items: SAMPLE_TRANSCRIPT, ui: { ...FOCUS_UI, replyBuf: "ship it" } },
+  { name: "focus-scrolled", width: 76, height: 14, row: completed, items: SAMPLE_TRANSCRIPT, ui: { ...FOCUS_UI, scrollFromBottom: 4 } },
+  { name: "focus-attached-readonly", width: 76, height: 14, row: attached, items: SAMPLE_TRANSCRIPT.slice(0, 3), ui: { ...FOCUS_UI, readOnly: true } },
 ];
