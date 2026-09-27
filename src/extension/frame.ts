@@ -127,8 +127,8 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
       : ui.peekOpen
         ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
         : selAttached
-          ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
+          ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · → read · Esc close"
+          : " ↑↓ select · → open · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
   lines.push(color("muted", hint));
   return lines;
 }

@@ -12,9 +12,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { renderFrame } from "../../src/extension/frame.js";
+import { renderFocus } from "../../src/extension/focus.js";
 import { ansiLinesToSvg } from "./ansi-to-svg.js";
 import { ansiColor } from "./theme.js";
-import { FIXTURES } from "./fixtures.js";
+import { FIXTURES, FOCUS_FIXTURES } from "./fixtures.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const GOLDEN_DIR = join(__dirname, "__golden__");
@@ -27,10 +28,15 @@ let fail = 0;
 await mkdir(ARTIFACT_DIR, { recursive: true });
 if (update) await mkdir(GOLDEN_DIR, { recursive: true });
 
-console.log(`stills — ${FIXTURES.length} fixtures${update ? " (updating goldens)" : ""}`);
+const SHOTS = [
+  ...FIXTURES.map((fx) => ({ name: fx.name, lines: renderFrame(fx.rows, fx.width, fx.ui, ansiColor) })),
+  ...FOCUS_FIXTURES.map((fx) => ({ name: fx.name, lines: renderFocus(fx.row, fx.items, fx.width, fx.height, fx.ui, ansiColor) })),
+];
 
-for (const fx of FIXTURES) {
-  const lines = renderFrame(fx.rows, fx.width, fx.ui, ansiColor);
+console.log(`stills — ${SHOTS.length} fixtures${update ? " (updating goldens)" : ""}`);
+
+for (const fx of SHOTS) {
+  const lines = fx.lines;
   const svg = ansiLinesToSvg(lines, { title: `Agent View — ${fx.name}` });
   const goldenPath = join(GOLDEN_DIR, `${fx.name}.svg`);
   const artifactPath = join(ARTIFACT_DIR, `${fx.name}.svg`);
