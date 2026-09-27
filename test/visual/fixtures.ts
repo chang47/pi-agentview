@@ -68,6 +68,8 @@ export const FIXTURES: Fixture[] = [
   { name: "mid-tool", width: 76, rows: [midTool], ui: ui({ selectedId: "s5", peekOpen: true }) },
   { name: "single-completed", width: 76, rows: [completed], ui: ui({ selectedId: "s2" }) },
   { name: "mixed-fleet", width: 76, rows: [awaiting, attached, working, completed, idle], ui: ui({ selectedId: "s1" }) },
+  // The view opens with the attached (current) row selected; its footer must still list n/r/filter.
+  { name: "attached-selected", width: 76, rows: [attached, working, completed], ui: ui({ selectedId: "fg:1" }) },
   {
     name: "peek-reply-typed",
     width: 76,

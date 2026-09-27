@@ -120,15 +120,41 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
   }
   lines.push(rule(width));
   const selAttached = rows.some((r) => r.id === ui.selectedId && r.attached);
-  const hint = ui.filterMode
-    ? " type to filter · s:working / s:blocked · Enter apply · Esc clear"
+  // The attached row is selected by default (STATE_ORDER puts it first), so its footer is the one
+  // people see most. It used to collapse to "↑↓ select · Esc close", hiding n/r/filter even though
+  // they still work there. Now: the status note on its own line + every key that still applies.
+  if (selAttached && !ui.filterMode && !ui.renameMode && !ui.peekOpen) {
+    const note = " ⊘ attached in another terminal — can't resume, reply or remove here";
+    lines.push(color("muted", truncateToWidth(note, Math.max(1, width), "…")));
+  }
+  const keys = ui.filterMode
+    ? ["type to filter", "s:working / s:blocked", "Enter apply", "Esc clear"]
     : ui.renameMode
-      ? " type new title · Enter save · Esc cancel"
+      ? ["type new title", "Enter save", "Esc cancel"]
       : ui.peekOpen
-        ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
+        ? ["type a reply", "Enter send", "↑↓ switch", "Esc close peek"]
         : selAttached
-          ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
-  lines.push(color("muted", hint));
+          ? ["↑↓ select", "/ filter", "n new", "r rename", "Esc close"]
+          : ["↑↓ select", "/ filter", "Space peek/reply", "Enter resume", "n new", "d remove", "r rename", "Esc close"];
+  for (const ln of wrapHint(keys, width)) lines.push(color("muted", ln));
   return lines;
+}
+
+/** Pack hint items into lines of at most `width` columns, breaking only between items (never
+ *  mid-key), so a narrow terminal shows every hotkey instead of clipping the tail. */
+export function wrapHint(items: string[], width: number): string[] {
+  const max = Math.max(1, width);
+  const out: string[] = [];
+  let cur = "";
+  for (const item of items) {
+    const next = cur ? `${cur} · ${item}` : ` ${item}`;
+    if (cur && next.length > max) {
+      out.push(cur);
+      cur = ` ${item}`;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur) out.push(cur);
+  return out.map((ln) => truncateToWidth(ln, max, "…"));
 }
