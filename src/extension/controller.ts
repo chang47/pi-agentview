@@ -308,7 +308,7 @@ export class BrokerManager {
     this.touch();
   }
 
-  /** Send a follow-up prompt to a background session (reply-from-peek).
+  /** Send a follow-up prompt to a background session (reply from the focus pane).
    *  Returns false when the row cannot accept a reply — the view must surface
    *  that rather than flashing "sent ✓" for a message that went nowhere. */
   sendReply(id: ManagedId, text: string): boolean {

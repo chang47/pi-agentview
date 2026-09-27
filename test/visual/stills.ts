@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { renderFrame } from "../../src/extension/frame.js";
 import { renderFocus } from "../../src/extension/focus.js";
 import { ansiLinesToSvg } from "./ansi-to-svg.js";
-import { ansiColor } from "./theme.js";
+import { ansiColor, ansiMarkdown } from "./theme.js";
 import { FIXTURES, FOCUS_FIXTURES } from "./fixtures.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -30,7 +30,7 @@ if (update) await mkdir(GOLDEN_DIR, { recursive: true });
 
 const SHOTS = [
   ...FIXTURES.map((fx) => ({ name: fx.name, lines: renderFrame(fx.rows, fx.width, fx.ui, ansiColor) })),
-  ...FOCUS_FIXTURES.map((fx) => ({ name: fx.name, lines: renderFocus(fx.row, fx.items, fx.width, fx.height, fx.ui, ansiColor) })),
+  ...FOCUS_FIXTURES.map((fx) => ({ name: fx.name, lines: renderFocus(fx.row, fx.items, fx.width, fx.height, fx.ui, ansiColor, ansiMarkdown) })),
 ];
 
 console.log(`stills — ${SHOTS.length} fixtures${update ? " (updating goldens)" : ""}`);

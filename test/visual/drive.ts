@@ -1,6 +1,6 @@
 // Driven flow: a looping animated SVG "video" of a fake-driven session, from a
 // fresh idle row through working -> tool -> completed, then the keystroke-driven
-// peek / reply / rename states. Run via jiti:
+// focus-pane reply / rename states. Run via jiti:
 //   node <jiti> test/visual/drive.ts            # assert current == golden
 //   node <jiti> test/visual/drive.ts --update   # (re)write golden
 //
@@ -15,11 +15,12 @@ import { fileURLToPath } from "node:url";
 
 import { deriveState, initialState } from "../../src/broker/state.js";
 import { renderFrame, type FrameUi } from "../../src/extension/frame.js";
+import { renderFocus, type FocusUi } from "../../src/extension/focus.js";
 import type { ManagedRow } from "../../src/extension/render.js";
 import type { BrokerState } from "../../src/types.js";
 import type { RpcMessage } from "../../src/broker/rpc-client.js";
 import { ansiFramesToAnimatedSvg } from "./ansi-to-svg.js";
-import { ansiColor } from "./theme.js";
+import { ansiColor, ansiMarkdown } from "./theme.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const GOLDEN_DIR = join(__dirname, "__golden__");
@@ -49,15 +50,22 @@ function rowFor(state: BrokerState): ManagedRow {
 function frame(state: BrokerState, ui: Partial<FrameUi>): string[] {
   const full: FrameUi = {
     selectedId: "s1",
-    peekOpen: false,
-    replyBuf: "",
-    justSent: false,
-    sendError: undefined,
     renameMode: false,
     renameBuf: "",
     ...ui,
   };
   return renderFrame([rowFor(state)], WIDTH, full, ansiColor);
+}
+
+// → on the completed row: the focus pane with the conversation the fake produced.
+function focusFrame(state: BrokerState, ui: Partial<FocusUi>): string[] {
+  const full: FocusUi = { scrollFromBottom: 0, replyBuf: "", justSent: false, readOnly: false, loading: false, ...ui };
+  const items = [
+    { kind: "user" as const, text: "Split the tokenizer out of the parser." },
+    { kind: "tool" as const, name: "edit", summary: "src/tokenizer.ts" },
+    { kind: "assistant" as const, text: state.finalResponse ?? "" },
+  ];
+  return renderFocus(rowFor(state), items, WIDTH, 12, full, ansiColor, ansiMarkdown);
 }
 
 // The exact events the fake pi emits on a prompt (scenario "ok", with a tool step).
@@ -80,9 +88,9 @@ for (const ev of events) {
   frames.push(frame(state, {}));
 }
 // Keystroke-driven UI states on the completed row.
-frames.push(frame(state, { peekOpen: true })); //           Space: peek panel opens
-frames.push(frame(state, { peekOpen: true, replyBuf: "ship it" })); // type a follow-up
-frames.push(frame(state, { peekOpen: true, justSent: true })); //     Enter: sent ✓
+frames.push(focusFrame(state, {})); //                        →: focus pane opens
+frames.push(focusFrame(state, { replyBuf: "ship it" })); //      type a follow-up
+frames.push(focusFrame(state, { justSent: true })); //           Enter: sent ✓
 frames.push(frame(state, { renameMode: true, renameBuf: "parser split" })); // r: rename
 
 const svg = ansiFramesToAnimatedSvg(frames, { title: "Agent View — fake-driven flow", msPerFrame: 1100 });
