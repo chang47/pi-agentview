@@ -10,10 +10,6 @@ import type { ManagedId } from "../types.js";
 /** UI-local state the frame needs that isn't part of a row. */
 export interface FrameUi {
   selectedId?: ManagedId;
-  peekOpen: boolean;
-  replyBuf: string;
-  justSent: boolean;
-  sendError?: string;
   renameMode: boolean;
   renameBuf: string;
   /** True while typing a filter (renders a cursor). */
@@ -98,20 +94,6 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
       const previewTxt = color("muted", truncateToWidth(` — ${previewOf(row)}`, Math.max(0, width - used), ""));
       lines.push(`${marker}${glyph} ${title}${previewTxt}${elapsed}`);
 
-      if (sel && ui.peekOpen) {
-        const body = row.state === "awaiting_input" ? row.activity : row.reply ?? row.activity;
-        if (body) {
-          for (const ln of body.split("\n").slice(0, 10)) {
-            lines.push(color("muted", "  " + truncateToWidth(ln, Math.max(2, width - 2), "…")));
-          }
-        }
-        // Reply input line.
-        const promptLabel = color("accent", "  reply ▸ ");
-        const buf = truncateToWidth(ui.replyBuf + "█", Math.max(1, width - 11), "");
-        if (ui.justSent) lines.push(color("success", "  sent ✓"));
-        else lines.push(promptLabel + buf);
-        if (ui.sendError) lines.push(color("error", "  ✗ " + truncateToWidth(ui.sendError, Math.max(2, width - 4), "…")));
-      }
     }
   }
 
@@ -124,11 +106,9 @@ export function renderFrame(rows: ManagedRow[], width: number, ui: FrameUi, colo
     ? " type to filter · s:working / s:blocked · Enter apply · Esc clear"
     : ui.renameMode
       ? " type new title · Enter save · Esc cancel"
-      : ui.peekOpen
-        ? " type a reply · Enter send · ↑↓ switch · Esc close peek"
-        : selAttached
-          ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · Esc close"
-          : " ↑↓ select · / filter · Space peek/reply · Enter resume · n new · d remove · r rename · Esc close";
+      : selAttached
+        ? " ⊘ attached in another terminal — can't connect (auto-recovers if it closes) · ↑↓ select · → read · Esc close"
+        : " ↑↓ select · →/Space open · / filter · Enter resume · n new · d remove · r rename · Esc close";
   lines.push(color("muted", hint));
   return lines;
 }

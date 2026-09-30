@@ -8,6 +8,7 @@ import { AgentViewComponent, type ViewResult } from "../../src/extension/view.js
 import type { BrokerManager } from "../../src/extension/controller.js";
 import type { ManagedRow } from "../../src/extension/render.js";
 import type { ManagedId } from "../../src/types.js";
+import type { TranscriptItem } from "../../src/extension/transcript.js";
 import type { TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { ansiColor } from "./theme.js";
@@ -20,6 +21,10 @@ export const KEY = {
   enter: "\r",
   esc: "\x1b",
   backspace: "\x7f",
+  right: "\x1b[C",
+  left: "\x1b[D",
+  pgup: "\x1b[5~",
+  pgdn: "\x1b[6~",
 } as const;
 
 export interface Call {
@@ -84,6 +89,10 @@ export interface RunOpts {
   width?: number;
   /** Make sendReply fail (returns false) from the outset — the unreachable-broker path. */
   replyOk?: boolean;
+  /** Scripted conversation per session id, for the focus pane (→). */
+  transcripts?: Record<string, TranscriptItem[]>;
+  /** Terminal height the focus pane sizes itself to. */
+  height?: number;
 }
 
 /** Run a scripted interaction against a fresh AgentViewComponent. */
@@ -98,6 +107,7 @@ export function runScenario(initialRows: ManagedRow[], steps: Step[], opts: RunO
     mgr as unknown as BrokerManager,
     (r) => done.push(r),
     () => {},
+    { loadTranscript: (row) => opts.transcripts?.[row.id] ?? [], height: () => opts.height ?? 24 },
   );
 
   const frames: string[][] = [];
